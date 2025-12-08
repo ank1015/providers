@@ -26,7 +26,7 @@ export class EventStream<T, R = T> implements AsyncIterable<T> {
 		}
 	}
 
-	end(result?: R): void {
+	end(result: R): void {
 		this.done = true;
 		if (result !== undefined) {
 			this.resolveFinalResult(result);

@@ -117,18 +117,19 @@ export interface AssistantMessage {
 
 export interface AssistantTextContent {
     type: 'text'
-    content: string
+    text: string
 }
 
 export interface AssistantThinkingContent {
     type: 'thinking'
-    content: string
+    thinking: string
 }
 
 export interface AssistantToolCall {
 	type: "toolCall";
     name: string
 	arguments: Record<string, any>;
+	id?: string
 }
 
 export interface AbstractedImageContent {

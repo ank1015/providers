@@ -1,4 +1,4 @@
-import { Context, Model } from "../types";
+import { Context, Model, Tool } from "../types";
 import { ResponseInput, ResponseInputItem, ResponseInputMessageContentList, ResponseInputImage, ResponseInputFile, ResponseInputText, ResponseFunctionCallOutputItemList } from "openai/resources/responses/responses.js";
 import { sanitizeSurrogates } from "../utils/sanitize-unicode";
 
