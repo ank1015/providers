@@ -1,4 +1,7 @@
 import { Response } from "openai/resources/responses/responses.js";
+import type { TSchema } from "@sinclair/typebox";
+import { OpenAIProviderOptions } from "./providers/openai";
+import { AssistantMessageEventStream } from "./utils/event-stream";
 
 export type Api = 'openai'
 
@@ -8,7 +11,7 @@ export interface Model<TApi extends Api> {
 	api: TApi;
 	baseUrl: string;
 	reasoning: boolean;
-	input: ("text" | "image")[];
+	input: ("text" | "image" | "file")[];
 	cost: {
 		input: number; // $/million tokens
 		output: number; // $/million tokens
@@ -26,7 +29,7 @@ export interface Model<TApi extends Api> {
 export interface UserMessage {
     role: "user"
     timestamp: number;
-    content: UserTextContent | UserImageContent[] | UserFileContent[] // Supports text, images and files
+    content: (UserTextContent | UserImageContent | UserFileContent)[] // Supports text, images and files
 }
 
 export interface ToolResultMessage<TDetails = any> {
@@ -34,7 +37,7 @@ export interface ToolResultMessage<TDetails = any> {
 	toolName: string;
 	toolCallId?: string;
     content: (UserTextContent | UserImageContent | UserFileContent)[]; // Supports text, images and files
-	details?: TDetails;
+	details?: TDetails; // Any extra information not sent to model
 	isError: boolean;
 	timestamp: number; // Unix timestamp in milliseconds
 }
@@ -54,6 +57,31 @@ export interface UserFileContent {
 export interface UserTextContent {
     type: 'text'
     content: string
+}
+
+// ################################ Types for Native Assistant Message
+
+export interface NativeOpenAIMessage {
+	role: "assistant"
+    _provider: 'openai'
+    message: Response
+}
+
+export type NativeAssistantMessage = NativeOpenAIMessage;
+
+// ################################ Types for Stored Message
+
+export type Message = UserMessage | NativeAssistantMessage | ToolResultMessage
+
+export interface Tool<TParameters extends TSchema = TSchema> {
+	name: string;
+	description: string;
+	parameters: TParameters;
+}
+export interface Context {
+	messages: Message[]
+	systemPrompt?: string;
+	tools?: Tool[]
 }
 
 // ################################ Types for Standardized streaming of Assistant Message
@@ -124,11 +152,18 @@ export type AssistantMessageEvent =
 	| { type: "error"; reason: Extract<StopReason, "aborted" | "error">; error: AssistantMessage };
 
 
-// ################################ Types for Native Assistant Message
 
-export interface NativeOpenAIMessage {
-    _provider: 'openai'
-    message: Response
+// ################################ Types for Stream Function
+
+export interface ApiOptionsMap {
+	"openai": OpenAIProviderOptions;
 }
 
-export type NativeAssistantMessage = NativeOpenAIMessage;
+export type OptionsForApi<TApi extends Api> = ApiOptionsMap[TApi];
+
+
+export type StreamFunction<TApi extends Api> = (
+	model: Model<TApi>,
+	context: Context,
+	options: OptionsForApi<TApi>,
+) => AssistantMessageEventStream;
