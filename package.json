@@ -1,0 +1,33 @@
+{
+	"name": "@ank1015/providers",
+	"version": "1.0.0",
+	"description": "LLM providers",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsc --watch",
+		"start": "node dist/index.js",
+		"clean": "rm -rf dist",
+		"check": "biome check --write . && tsc --noEmit",
+		"test": "vitest --run"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "MIT",
+	"dependencies": {
+		"@anthropic-ai/sdk": "^0.71.0",
+		"@biomejs/biome": "^2.3.8",
+		"@google/genai": "^1.30.0",
+		"@sinclair/typebox": "^0.34.41",
+		"ajv": "^8.17.1",
+		"ajv-formats": "^3.0.1",
+		"openai": "^6.9.1",
+		"partial-json": "^0.1.7",
+		"typescript": "^5.9.3"
+	},
+	"devDependencies": {
+		"@types/node": "^24.10.1",
+		"vitest": "^4.0.14"
+	}
+}
