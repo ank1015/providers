@@ -260,7 +260,7 @@ export const streamOpenAI: StreamFunction<'openai'> = (
 						if (context.tools) {
 							const tool = context.tools.find((t) => t.name === toolCall.name);
 							if (tool) {
-								toolCall.arguments = validateToolArguments(tool, toolCall);
+								toolCall.arguments = validateToolArguments(tool, toolCall) as Record<string, any>;
 							}
 						}
 
@@ -293,9 +293,9 @@ export const streamOpenAI: StreamFunction<'openai'> = (
 				}
 				// Handle errors
 				else if (event.type === "error") {
-					throw new Error(`Error Code ${event.code}: ${event.message}` || "Unknown error");
+					throw new Error(`OpenAI API Error (${event.code}): ${event.message}` || "Unknown OpenAI error");
 				} else if (event.type === "response.failed") {
-					throw new Error("Unknown error");
+					throw new Error("OpenAI response failed without error details");
 				}
 			}
 			if (options?.signal?.aborted) {
@@ -303,7 +303,9 @@ export const streamOpenAI: StreamFunction<'openai'> = (
 			}
 
 			if (output.stopReason === "aborted" || output.stopReason === "error") {
-				throw new Error("An unkown error ocurred");
+				throw new Error(
+					`Stream ended with status: ${output.stopReason}${output.errorMessage ? ` - ${output.errorMessage}` : ""}`
+				);
 			}
 
 			stream.push({ type: "done", reason: output.stopReason, message: output });
@@ -394,7 +396,7 @@ function buildParams(model: Model<"openai">, context: Context, options?: OpenAIP
 	return params;
 }
 
-function convertTools(tools: Tool[]): OpenAITool[] {
+function convertTools(tools: readonly Tool[]): OpenAITool[] {
 	return tools.map((tool) => ({
 		type: "function",
 		name: tool.name,

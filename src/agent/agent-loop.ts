@@ -38,7 +38,15 @@ export function agentLoop<TApi extends Api>(
 		// Keep looping while we have tool calls or queued messages
 		let hasMoreToolCalls = true;
 		let firstTurn = true;
-		let queuedMessages: QueuedMessage<any>[] = (await config.getQueuedMessages?.()) || [];
+		let queuedMessages: QueuedMessage<any>[] = [];
+
+		// Safely get queued messages, handling any errors
+		try {
+			queuedMessages = (await config.getQueuedMessages?.()) || [];
+		} catch (error) {
+			console.warn("Error getting queued messages:", error instanceof Error ? error.message : String(error));
+			// Continue with empty queued messages
+		}
 
 		while (hasMoreToolCalls || queuedMessages.length > 0) {
 			if (!firstTurn) {
@@ -64,9 +72,21 @@ export function agentLoop<TApi extends Api>(
 			const {finalAssistantMessage, finalMessage} = await streamAssistantResponse(currentContext, config, signal, stream);
 			newMessages.push(finalMessage);
 
-			if(finalAssistantMessage && (finalAssistantMessage.stopReason === 'aborted' || finalAssistantMessage.stopReason === "error")){
+			// Check if assistant message is valid
+			if (!finalAssistantMessage) {
+				// This should never happen, but handle it gracefully
+				stream.push({ type: "agent_end", messages: newMessages, status: "error" });
+				stream.end(newMessages);
+				return;
+			}
+
+			if(finalAssistantMessage.stopReason === 'aborted' || finalAssistantMessage.stopReason === "error"){
 				stream.push({ type: "turn_end", message:finalAssistantMessage, toolResults: [] });
-				stream.push({ type: "agent_end", messages: newMessages });
+				stream.push({
+					type: "agent_end",
+					messages: newMessages,
+					status: finalAssistantMessage.stopReason === 'aborted' ? "aborted" : "error"
+				});
 				stream.end(newMessages);
 				return;
 			}
@@ -85,9 +105,14 @@ export function agentLoop<TApi extends Api>(
 			stream.push({ type: "turn_end", message: finalAssistantMessage, toolResults: toolResults });
 
 			// Get queued messages after turn completes
-			queuedMessages = (await config.getQueuedMessages?.()) || [];
+			try {
+				queuedMessages = (await config.getQueuedMessages?.()) || [];
+			} catch (error) {
+				console.warn("Error getting queued messages:", error instanceof Error ? error.message : String(error));
+				queuedMessages = [];
+			}
 		}
-		stream.push({ type: "agent_end", messages: newMessages });
+		stream.push({ type: "agent_end", messages: newMessages, status: "completed" });
 		stream.end(newMessages);
 	})()
 
@@ -111,7 +136,7 @@ async function streamAssistantResponse<TApi extends Api>(
 	// Use a copy of messages to avoid mutating the original context
 
 	const processedMessages = config.preprocessor
-		? await config.preprocessor(context.messages)
+		? await config.preprocessor(context.messages, signal)
 		: [...context.messages];
 
 	const processedContext: Context = {
@@ -168,7 +193,7 @@ async function streamAssistantResponse<TApi extends Api>(
 }
 
 async function executeToolCalls<T>(
-	tools: AgentTool<any, T>[] | undefined,
+	tools: readonly AgentTool<any, T>[] | undefined,
 	assistantMessage: AssistantMessage,
 	signal: AbortSignal | undefined,
 	stream: EventStream<AgentEvent, AgentContext["messages"]>,
@@ -189,8 +214,15 @@ async function executeToolCalls<T>(
 		let resultOrError: AgentToolResult<T> | string;
 		let isError = false;
 
+		let errorDetails: ToolResultMessage["error"] | undefined;
+
 		try {
-			if (!tool) throw new Error(`Tool ${toolCall.name} not found`);
+			if (!tool) {
+				const availableTools = tools?.map((t) => t.name).join(", ") || "none";
+				throw new Error(
+					`Tool "${toolCall.name}" not found. Available tools: ${availableTools}`
+				);
+			}
 
 			// Validate arguments using shared validation function
 			const validatedArgs = validateToolArguments(tool, toolCall);
@@ -200,6 +232,14 @@ async function executeToolCalls<T>(
 		} catch (e) {
 			resultOrError = e instanceof Error ? e.message : String(e);
 			isError = true;
+			// Preserve full error details for debugging
+			if (e instanceof Error) {
+				errorDetails = {
+					message: e.message,
+					name: e.name,
+					stack: e.stack,
+				};
+			}
 		}
 
 		stream.push({
@@ -221,6 +261,7 @@ async function executeToolCalls<T>(
 			content,
 			details: typeof resultOrError === "string" ? ({} as T) : resultOrError.details,
 			isError,
+			error: errorDetails,
 			timestamp: Date.now(),
 		};
 

@@ -39,6 +39,11 @@ export interface ToolResultMessage<TDetails = any> {
     content: (UserTextContent | UserImageContent | UserFileContent)[]; // Supports text, images and files
 	details?: TDetails; // Any extra information not sent to model
 	isError: boolean;
+	error?: {
+		message: string;
+		name?: string;
+		stack?: string;
+	}; // Full error details if isError is true
 	timestamp: number; // Unix timestamp in milliseconds
 }
 
@@ -73,15 +78,29 @@ export type NativeAssistantMessage = NativeOpenAIMessage;
 
 export type Message = UserMessage | NativeAssistantMessage | ToolResultMessage
 
-export interface Tool<TParameters extends TSchema = TSchema> {
-	name: string;
+export interface Tool<TParameters extends TSchema = TSchema, TName extends string = string> {
+	name: TName;
 	description: string;
 	parameters: TParameters;
 }
-export interface Context {
+
+// Helper type to extract tool names from a tool array for better autocomplete
+export type ToolName<TTool extends Tool> = TTool["name"];
+export type ToolNames<TTools extends readonly Tool[]> = TTools[number]["name"];
+
+// Helper function to create a tool with better type inference
+// Use 'as const' on the tool array for best autocomplete:
+// const tools = [defineTool({ name: "calculator", ... }), ...] as const
+export function defineTool<TParameters extends TSchema, TName extends string>(
+	tool: Tool<TParameters, TName>
+): Tool<TParameters, TName> {
+	return tool;
+}
+
+export interface Context<TTools extends readonly Tool[] = readonly Tool[]> {
 	messages: Message[]
 	systemPrompt?: string;
-	tools?: Tool[]
+	tools?: TTools
 }
 
 // ################################ Types for Standardized streaming of Assistant Message

@@ -24,7 +24,7 @@ export interface AgentTool<TParameters extends TSchema = TSchema, TDetails = any
 export interface AgentContext {
 	systemPrompt: string;
 	messages: Message[];
-	tools?: AgentTool<any>[];
+	tools?: readonly AgentTool<any>[];
 }
 
 
@@ -54,7 +54,7 @@ export type AgentEvent =
 	| { type: "turn_end"; message: AssistantMessage; toolResults: ToolResultMessage[] }
 	// Emitted when the agent has completed all its turns. All messages from every turn are
 	// contained in messages, which can be appended to the context
-	| { type: "agent_end"; messages: AgentContext["messages"] };
+	| { type: "agent_end"; messages: AgentContext["messages"]; status: "completed" | "aborted" | "error" };
 
 // Queued message with optional LLM representation
 export interface QueuedMessage<TApp = Message> {
@@ -74,7 +74,7 @@ export interface SimpleProviderOptions {
 // Configuration for agent loop execution
 export interface AgentLoopConfig<TApi extends Api> {
 	model: Model<TApi>;
-	preprocessor?: (messages: AgentContext["messages"]) => Promise<AgentContext["messages"]>;
+	preprocessor?: (messages: AgentContext["messages"], signal?: AbortSignal) => Promise<AgentContext["messages"]>;
     providerOptions: OptionsForApi<TApi>,
 	getQueuedMessages?: <T>() => Promise<QueuedMessage<T>[]>;
 }

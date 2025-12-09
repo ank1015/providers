@@ -96,7 +96,10 @@ export function buildOpenAIMessages(model: Model<'openai'> ,context: Context): R
             }
             // TODO Implement other provider conversions
             else{
-                throw new Error(`Unsupported provider: ${message._provider} in ${model.api} session`);
+                throw new Error(
+                    `Cannot convert ${message._provider} assistant message to ${model.api} format. ` +
+                    `Cross-provider conversion for ${message._provider} → ${model.api} is not yet implemented.`
+                );
             }
         }
     

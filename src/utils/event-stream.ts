@@ -28,13 +28,13 @@ export class EventStream<T, R = T> implements AsyncIterable<T> {
 
 	end(result: R): void {
 		this.done = true;
-		if (result !== undefined) {
-			this.resolveFinalResult(result);
-		}
+		// Always resolve the final result to prevent deadlock
+		this.resolveFinalResult(result);
 		// Notify all waiting consumers that we're done
 		while (this.waiting.length > 0) {
 			const waiter = this.waiting.shift()!;
-			waiter({ value: undefined as any, done: true });
+			// When done is true, value type is the return type (void for async generators)
+			waiter({ done: true, value: undefined! });
 		}
 	}
 

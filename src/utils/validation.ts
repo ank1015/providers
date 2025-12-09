@@ -6,6 +6,7 @@ const Ajv = (AjvModule as any).default || AjvModule;
 const addFormats = (addFormatsModule as any).default || addFormatsModule;
 
 import type { Tool, AssistantToolCall } from "../types.js";
+import type { TSchema, Static } from "@sinclair/typebox";
 
 // Detect if we're in a browser extension environment with strict CSP
 // Chrome extensions with Manifest V3 don't allow eval/Function constructor
@@ -31,15 +32,18 @@ if (!isBrowserExtension) {
  * Validates tool call arguments against the tool's TypeBox schema
  * @param tool The tool definition with TypeBox schema
  * @param toolCall The tool call from the LLM
- * @returns The validated arguments
+ * @returns The validated arguments with proper typing
  * @throws Error with formatted message if validation fails
  */
-export function validateToolArguments(tool: Tool, toolCall: AssistantToolCall): any {
+export function validateToolArguments<TParameters extends TSchema>(
+	tool: Tool<TParameters>,
+	toolCall: AssistantToolCall
+): Static<TParameters> {
 	// Skip validation in browser extension environment (CSP restrictions prevent AJV from working)
 	if (!ajv || isBrowserExtension) {
 		// Trust the LLM's output without validation
 		// Browser extensions can't use AJV due to Manifest V3 CSP restrictions
-		return toolCall.arguments;
+		return toolCall.arguments as Static<TParameters>;
 	}
 
 	// Compile the schema
@@ -47,7 +51,7 @@ export function validateToolArguments(tool: Tool, toolCall: AssistantToolCall): 
 
 	// Validate the arguments
 	if (validate(toolCall.arguments)) {
-		return toolCall.arguments;
+		return toolCall.arguments as Static<TParameters>;
 	}
 
 	// Format validation errors nicely
