@@ -2,7 +2,7 @@
 
 A provider abstraction layer for building agentic systems with multiple LLM providers. Built with a philosophy that **harnesses should be model-specific** while maintaining the ability to test and compose different models together.
 
-This documentation is written by claude.
+This documentation is written by claude. Most of the coding patterns are taken and inspired from [PI-mono](https://github.com/badlogic/pi-mono/tree/main)
 
 ## Philosophy
 
