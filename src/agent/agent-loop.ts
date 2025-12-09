@@ -71,6 +71,7 @@ export function agentLoop<TApi extends Api>(
 			// Stream assistant response
 			const {finalAssistantMessage, finalMessage} = await streamAssistantResponse(currentContext, config, signal, stream);
 			newMessages.push(finalMessage);
+			currentContext.messages.push(finalMessage);  // ✅ Add to context so LLM sees its previous responses!
 
 			// Check if assistant message is valid
 			if (!finalAssistantMessage) {

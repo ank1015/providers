@@ -5,7 +5,6 @@ import { sanitizeSurrogates } from "../utils/sanitize-unicode";
 export function buildOpenAIMessages(model: Model<'openai'> ,context: Context): ResponseInput {
 
     const openAIMessages: ResponseInput = [];
-
     if(context.systemPrompt){
         openAIMessages.push({
             role: 'developer',

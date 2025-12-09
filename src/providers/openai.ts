@@ -115,7 +115,7 @@ export const streamOpenAI: StreamFunction<'openai'> = (
 						currentItem = item;
 						currentBlock = {
 							type: "toolCall",
-							id: item.call_id + "|" + item.id,
+							id: item.call_id,
 							name: item.name,
 							arguments: {},
 							partialJson: item.arguments || "",
@@ -251,7 +251,7 @@ export const streamOpenAI: StreamFunction<'openai'> = (
 					} else if (item.type === "function_call") {
 						const toolCall: AssistantToolCall = {
 							type: "toolCall",
-							id: item.call_id + "|" + item.id,
+							id: item.call_id,
 							name: item.name,
 							arguments: JSON.parse(item.arguments),
 						};
@@ -319,10 +319,19 @@ export const streamOpenAI: StreamFunction<'openai'> = (
 			output.stopReason = options?.signal?.aborted ? "aborted" : "error";
 			output.errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
 			stream.push({ type: "error", reason: output.stopReason, error: output });
+
+			// Update finalResponse to reflect the error state
+			finalResponse.status = options?.signal?.aborted ? "cancelled" : "failed";
+			finalResponse.error = error instanceof Error ? {
+				message: error.message,
+				code: (error as any).code || "unknown_error",
+				type: error.name || "Error"
+			} as any : { message: String(error) } as any;
+
 			stream.end({
 				_provider: 'openai',
 				role: 'assistant',
-				message: {...finalResponse, error: error as any}
+				message: finalResponse
 			});
 		}
     })()
