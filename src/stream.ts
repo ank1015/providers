@@ -35,7 +35,7 @@ export function stream<TApi extends Api>(
 	const api: Api = model.api;
 	switch (api) {
         case 'openai':
-            streamOpenAI(model, context, providerOptions)
+            return streamOpenAI(model, context, providerOptions)
 
         default: {
 			const _exhaustive = api;

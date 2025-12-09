@@ -39,7 +39,7 @@ export const streamOpenAI: StreamFunction<'openai'> = (
 		const output: AssistantMessage = {
 			role: "assistant",
 			content: [],
-			api: "openai-responses" as Api,
+			api: "openai" as Api,
 			model: model.id,
 			usage: {
 				input: 0,
@@ -320,7 +320,7 @@ export const streamOpenAI: StreamFunction<'openai'> = (
 			stream.end({
 				_provider: 'openai',
 				role: 'assistant',
-				message: finalResponse
+				message: {...finalResponse, error: error as any}
 			});
 		}
     })()
