@@ -2,6 +2,7 @@ import { Context, Model, Tool } from "../types";
 import { ResponseInput, ResponseInputItem, ResponseInputMessageContentList, ResponseInputImage, ResponseInputFile, ResponseInputText, ResponseFunctionCallOutputItemList } from "openai/resources/responses/responses.js";
 import { sanitizeSurrogates } from "../utils/sanitize-unicode";
 import { ContentListUnion, Part } from "@google/genai";
+import { writeFileSync } from "fs";
 
 export function buildOpenAIMessages(model: Model<'openai'> ,context: Context): ResponseInput {
 
@@ -111,6 +112,7 @@ export function buildOpenAIMessages(model: Model<'openai'> ,context: Context): R
 
 export function buildGoogleMessages(model: Model<'google'> ,context: Context): ContentListUnion {
     const contents: ContentListUnion = []
+    writeFileSync('/Users/notacoder/Desktop/frontier-agents/providers/logs/raw-messages.txt', JSON.stringify(context.messages, null, 2), "utf-8");
 
     for (let i=0; i< context.messages.length; i++){
         const message = context.messages[i];
@@ -149,12 +151,11 @@ export function buildGoogleMessages(model: Model<'google'> ,context: Context): C
 
         if(message.role === 'toolResult'){
             const parts : Part[] = [];
+            let textRes = '(see attached:)';
             for(let p=0; p<message.content.length; p++){
                 const messageContent = message.content[p];
                 if(messageContent.type === 'text'){
-                    parts.push({
-                        text: messageContent.content
-                    })
+                    textRes = messageContent.content
                 }
                 if(messageContent.type === 'image'){
                     parts.push({
@@ -180,7 +181,11 @@ export function buildGoogleMessages(model: Model<'google'> ,context: Context): C
                         functionResponse: {
                             id: message.toolCallId,
                             name: message.toolName,
-                            parts
+                            parts,
+                            response: {
+                                result: textRes,
+                                isError: message.isError
+                            }
                         }
                     }
                 ]
@@ -208,6 +213,6 @@ export function buildGoogleMessages(model: Model<'google'> ,context: Context): C
         }
 
     }
-
+    writeFileSync('/Users/notacoder/Desktop/frontier-agents/providers/logs/built-messages.txt', JSON.stringify(contents, null, 2), "utf-8");
     return contents;
 }

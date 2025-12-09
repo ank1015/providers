@@ -296,7 +296,16 @@ export const streamGoogle: StreamFunction<'google'> = (
             })
 
         } catch(error){
+			for (const block of output.content) delete (block as any).index;
+			output.stopReason = options?.signal?.aborted ? "aborted" : "error";
+			output.errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+			stream.push({ type: "error", reason: output.stopReason, error: output });
 
+			stream.end({
+				_provider: 'google',
+				role: 'assistant',
+				message: finalResponse
+			})
         }
 
     })()
@@ -365,6 +374,87 @@ function buildParams(model: Model<"google">, context: Context, options?: GoogleP
     return params;
 }
 
+/**
+ * Transforms a JSON Schema to Google's supported subset.
+ * Main transformations:
+ * - Converts { "const": "value" } to { "enum": ["value"] }
+ * - Converts { "anyOf": [{ "const": "a" }, { "const": "b" }] } to { "enum": ["a", "b"] }
+ * - Recursively processes nested objects and arrays
+ */
+function transformSchemaForGoogle(schema: any): any {
+	if (!schema || typeof schema !== 'object') {
+		return schema;
+	}
+
+	// Handle arrays
+	if (Array.isArray(schema)) {
+		return schema.map(transformSchemaForGoogle);
+	}
+
+	const transformed: any = {};
+
+	// Handle const keyword - convert to enum
+	if ('const' in schema) {
+		transformed.enum = [schema.const];
+		// Copy over other properties except const
+		for (const key in schema) {
+			if (key !== 'const') {
+				transformed[key] = schema[key];
+			}
+		}
+		return transformed;
+	}
+
+	// Handle anyOf with const values - convert to enum
+	if ('anyOf' in schema && Array.isArray(schema.anyOf)) {
+		const allConst = schema.anyOf.every((item: any) => item && typeof item === 'object' && 'const' in item);
+		if (allConst) {
+			// Extract all const values into a single enum
+			transformed.enum = schema.anyOf.map((item: any) => item.const);
+			// Copy over other properties from the parent schema
+			for (const key in schema) {
+				if (key !== 'anyOf') {
+					transformed[key] = schema[key];
+				}
+			}
+			// Copy type and other properties from the first anyOf item if not already set
+			if (schema.anyOf.length > 0) {
+				const firstItem = schema.anyOf[0];
+				for (const key in firstItem) {
+					if (key !== 'const' && !(key in transformed)) {
+						transformed[key] = firstItem[key];
+					}
+				}
+			}
+			return transformed;
+		}
+	}
+
+	// Recursively process all properties
+	for (const key in schema) {
+		if (key === 'properties' && typeof schema.properties === 'object') {
+			// Recursively transform each property
+			transformed.properties = {};
+			for (const propKey in schema.properties) {
+				transformed.properties[propKey] = transformSchemaForGoogle(schema.properties[propKey]);
+			}
+		} else if (key === 'items' && schema.items) {
+			// Recursively transform array items schema
+			transformed.items = transformSchemaForGoogle(schema.items);
+		} else if (key === 'anyOf' || key === 'oneOf' || key === 'allOf') {
+			// Recursively transform union/intersection schemas
+			transformed[key] = Array.isArray(schema[key])
+				? schema[key].map(transformSchemaForGoogle)
+				: transformSchemaForGoogle(schema[key]);
+		} else {
+			// Copy other properties as-is
+			transformed[key] = schema[key];
+		}
+	}
+
+	return transformed;
+}
+
 function convertTools(tools: readonly Tool[]): any[] | undefined {
 	if (tools.length === 0) return undefined;
 	return [
@@ -372,7 +462,7 @@ function convertTools(tools: readonly Tool[]): any[] | undefined {
 			functionDeclarations: tools.map((tool) => ({
 				name: tool.name,
 				description: tool.description,
-				parameters: tool.parameters as any, // TypeBox already generates JSON Schema
+				parameters: transformSchemaForGoogle(tool.parameters),
 			})),
 		},
 	];
