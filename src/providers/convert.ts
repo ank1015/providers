@@ -1,6 +1,7 @@
 import { Context, Model, Tool } from "../types";
 import { ResponseInput, ResponseInputItem, ResponseInputMessageContentList, ResponseInputImage, ResponseInputFile, ResponseInputText, ResponseFunctionCallOutputItemList } from "openai/resources/responses/responses.js";
 import { sanitizeSurrogates } from "../utils/sanitize-unicode";
+import { ContentListUnion, Part } from "@google/genai";
 
 export function buildOpenAIMessages(model: Model<'openai'> ,context: Context): ResponseInput {
 
@@ -105,4 +106,108 @@ export function buildOpenAIMessages(model: Model<'openai'> ,context: Context): R
     }
 
     return openAIMessages;
+}
+
+
+export function buildGoogleMessages(model: Model<'google'> ,context: Context): ContentListUnion {
+    const contents: ContentListUnion = []
+
+    for (let i=0; i< context.messages.length; i++){
+        const message = context.messages[i];
+
+        if(message.role === 'user'){
+            const parts: Part[] = [];
+            for(let p=0; p<message.content.length; p++){
+                const messageContent = message.content[p];
+                if(messageContent.type === 'text'){
+                    parts.push({
+                        text: messageContent.content
+                    })
+                }
+                if(messageContent.type === 'image'){
+                    parts.push({
+                        inlineData: {
+                            mimeType: messageContent.mimeType,
+                            data: messageContent.data
+                        }
+                    })
+                }
+                if(messageContent.type === 'file'){
+                    parts.push({
+                        inlineData: {
+                            mimeType: messageContent.mimeType,
+                            data: messageContent.data
+                        }
+                    })
+                }
+            }
+            contents.push({
+                role: 'user',
+                parts
+            })
+        }
+
+        if(message.role === 'toolResult'){
+            const parts : Part[] = [];
+            for(let p=0; p<message.content.length; p++){
+                const messageContent = message.content[p];
+                if(messageContent.type === 'text'){
+                    parts.push({
+                        text: messageContent.content
+                    })
+                }
+                if(messageContent.type === 'image'){
+                    parts.push({
+                        inlineData: {
+                            mimeType: messageContent.mimeType,
+                            data: messageContent.data
+                        }
+                    })
+                }
+                if(messageContent.type === 'file'){
+                    parts.push({
+                        inlineData: {
+                            mimeType: messageContent.mimeType,
+                            data: messageContent.data
+                        }
+                    })
+                }
+            }
+            contents.push({
+                role: 'user',
+                parts: [
+                    {
+                        functionResponse: {
+                            id: message.toolCallId,
+                            name: message.toolName,
+                            parts
+                        }
+                    }
+                ]
+            })
+        }
+
+        if(message.role === 'assistant'){
+            if(message._provider === 'google'){
+                if(message.message.candidates){
+                    for(let p=0; p< message.message.candidates?.length; p++){
+                        const candidate = message.message.candidates[p];
+                        if(candidate.content){
+                            contents.push(candidate.content)
+                        }
+                    }
+                }
+            }
+            // TODO Implement other provider conversions
+            else{
+                throw new Error(
+                    `Cannot convert ${message._provider} assistant message to ${model.api} format. ` +
+                    `Cross-provider conversion for ${message._provider} → ${model.api} is not yet implemented.`
+                );
+            }
+        }
+
+    }
+
+    return contents;
 }

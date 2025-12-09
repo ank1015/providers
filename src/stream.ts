@@ -1,11 +1,12 @@
 import type { Model, Context, Api, OptionsForApi } from "./types";
 import { AssistantMessageEventStream } from "./utils/event-stream";
-import { streamOpenAI } from "./providers/openai";
+import { streamOpenAI, OpenAIProviderOptions } from "./providers/openai";
+import { streamGoogle, GoogleProviderOptions } from "./providers/google";
 
 const envMap: Record<Api, string> = {
 	openai: "OPENAI_API_KEY",
 	// anthropic: "ANTHROPIC_API_KEY",
-	// google: "GEMINI_API_KEY",
+	google: "GEMINI_API_KEY",
 	// groq: "GROQ_API_KEY",
 	// cerebras: "CEREBRAS_API_KEY",
 	// xai: "XAI_API_KEY",
@@ -32,13 +33,26 @@ export function stream<TApi extends Api>(
 
 	const providerOptions = { ...options, apiKey };
 
-	const api: Api = model.api;
-	switch (api) {
+	// Switch directly on model.api and use type assertions for each provider
+	switch (model.api) {
         case 'openai':
-            return streamOpenAI(model, context, providerOptions)
+            // TypeScript knows this branch only runs when model.api === 'openai'
+            return streamOpenAI(
+				model as Model<'openai'>,
+				context,
+				providerOptions as OpenAIProviderOptions
+			);
+
+		case 'google':
+            // TypeScript knows this branch only runs when model.api === 'google'
+			return streamGoogle(
+				model as Model<'google'>,
+				context,
+				providerOptions as GoogleProviderOptions
+			);
 
         default: {
-			const _exhaustive = api;
+			const _exhaustive: never = model.api;
 			throw new Error(`Unhandled API: ${_exhaustive}`);
         }
     }

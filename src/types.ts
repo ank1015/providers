@@ -2,8 +2,10 @@ import { Response } from "openai/resources/responses/responses.js";
 import type { TSchema } from "@sinclair/typebox";
 import { OpenAIProviderOptions } from "./providers/openai";
 import { AssistantMessageEventStream } from "./utils/event-stream";
+import { GoogleProviderOptions } from "./providers/google";
+import type { GenerateContentResponse } from "@google/genai";
 
-export type Api = 'openai'
+export type Api = 'openai' | 'google'
 
 export interface Model<TApi extends Api> {
 	id: string;
@@ -72,7 +74,13 @@ export interface NativeOpenAIMessage {
     message: Response
 }
 
-export type NativeAssistantMessage = NativeOpenAIMessage;
+export interface NativeGoogleMessage {
+	role: "assistant"
+    _provider: 'google'
+    message: GenerateContentResponse
+}
+
+export type NativeAssistantMessage = NativeOpenAIMessage | NativeGoogleMessage;
 
 // ################################ Types for Stored Message
 
@@ -177,6 +185,7 @@ export type AssistantMessageEvent =
 
 export interface ApiOptionsMap {
 	"openai": OpenAIProviderOptions;
+	"google": GoogleProviderOptions;
 }
 
 export type OptionsForApi<TApi extends Api> = ApiOptionsMap[TApi];
