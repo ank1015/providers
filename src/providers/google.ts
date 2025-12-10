@@ -406,7 +406,7 @@ function transformSchemaForGoogle(schema: any): any {
 	}
 
 	// Handle anyOf with const values - convert to enum
-	if ('anyOf' in schema && Array.isArray(schema.anyOf)) {
+	if ('anyOf' in schema && Array.isArray(schema.anyOf) && schema.anyOf.length > 0) {
 		const allConst = schema.anyOf.every((item: any) => item && typeof item === 'object' && 'const' in item);
 		if (allConst) {
 			// Extract all const values into a single enum

@@ -80,7 +80,7 @@ export const MODELS = {
 			api: "google",
 			baseUrl: "https://generativelanguage.googleapis.com/v1beta",
 			reasoning: true,
-			input: ["text", "image"],
+			input: ["text", "image", "file"],
 			cost: {
 				input: 0.1,
 				output: 0.4,
@@ -96,7 +96,7 @@ export const MODELS = {
 			api: "google",
 			baseUrl: "https://generativelanguage.googleapis.com/v1beta",
 			reasoning: true,
-			input: ["text", "image"],
+			input: ["text", "image", "file"],
 			cost: {
 				input: 2,
 				output: 12,
@@ -112,7 +112,7 @@ export const MODELS = {
 			api: "google",
 			baseUrl: "https://generativelanguage.googleapis.com/v1beta",
 			reasoning: true,
-			input: ["text", "image"],
+			input: ["text", "image", "file"],
 			cost: {
 				input: 0.3,
 				output: 2.5,
@@ -130,7 +130,7 @@ export const MODELS = {
 			api: "openai",
 			baseUrl: "https://api.openai.com/v1",
 			reasoning: true,
-			input: ["text", "image"],
+			input: ["text", "image", "file"],
 			cost: {
 				input: 1.25,
 				output: 10,
@@ -146,7 +146,7 @@ export const MODELS = {
 			api: "openai",
 			baseUrl: "https://api.openai.com/v1",
 			reasoning: true,
-			input: ["text", "image"],
+			input: ["text", "image", "file"],
 			cost: {
 				input: 0.25,
 				output: 2,
@@ -162,7 +162,7 @@ export const MODELS = {
 			api: "openai",
 			baseUrl: "https://api.openai.com/v1",
 			reasoning: true,
-			input: ["text", "image"],
+			input: ["text", "image", "file"],
 			cost: {
 				input: 1.25,
 				output: 10,
@@ -194,7 +194,7 @@ export const MODELS = {
 			api: "openai",
 			baseUrl: "https://api.openai.com/v1",
 			reasoning: true,
-			input: ["text", "image"],
+			input: ["text", "image", "file"],
 			cost: {
 				input: 0.05,
 				output: 0.4,
@@ -210,7 +210,7 @@ export const MODELS = {
 			api: "openai",
 			baseUrl: "https://api.openai.com/v1",
 			reasoning: true,
-			input: ["text", "image"],
+			input: ["text", "image", "file"],
 			cost: {
 				input: 1.25,
 				output: 10,
@@ -226,7 +226,7 @@ export const MODELS = {
 			api: "openai",
 			baseUrl: "https://api.openai.com/v1",
 			reasoning: true,
-			input: ["text", "image"],
+			input: ["text", "image", "file"],
 			cost: {
 				input: 0.25,
 				output: 2,
@@ -242,7 +242,7 @@ export const MODELS = {
 			api: "openai",
 			baseUrl: "https://api.openai.com/v1",
 			reasoning: true,
-			input: ["text", "image"],
+			input: ["text", "image", "file"],
 			cost: {
 				input: 1.25,
 				output: 10,
@@ -258,7 +258,7 @@ export const MODELS = {
 			api: "openai",
 			baseUrl: "https://api.openai.com/v1",
 			reasoning: true,
-			input: ["text", "image"],
+			input: ["text", "image", "file"],
 			cost: {
 				input: 1.25,
 				output: 10,
@@ -274,7 +274,7 @@ export const MODELS = {
 			api: "openai",
 			baseUrl: "https://api.openai.com/v1",
 			reasoning: true,
-			input: ["text", "image"],
+			input: ["text", "image", "file"],
 			cost: {
 				input: 15,
 				output: 120,
@@ -290,7 +290,7 @@ export const MODELS = {
 			api: "openai",
 			baseUrl: "https://api.openai.com/v1",
 			reasoning: true,
-			input: ["text", "image"],
+			input: ["text", "image", "file"],
 			cost: {
 				input: 1.25,
 				output: 10,
