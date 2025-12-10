@@ -23,11 +23,11 @@
 		"ajv": "^8.17.1",
 		"ajv-formats": "^3.0.1",
 		"openai": "^6.9.1",
-		"partial-json": "^0.1.7",
-		"typescript": "^5.9.3"
+		"partial-json": "^0.1.7"
 	},
 	"devDependencies": {
 		"@types/node": "^24.10.1",
-		"vitest": "^4.0.14"
+		"vitest": "^4.0.14",
+		"typescript": "^5.9.3"
 	}
 }

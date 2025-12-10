@@ -1,5 +1,6 @@
 // ============================================================================
 // Main Functions
+
 // ============================================================================
 export { stream } from "./stream";
 export { agentLoop } from "./agent/agent-loop";
@@ -58,7 +59,7 @@ export type {
 // Models and Registry
 // ============================================================================
 export { MODELS } from "./models.generated";
-export { calculateCost } from "./models";
+export { calculateCost, getModel } from "./models";
 
 // ============================================================================
 // Utilities
@@ -67,6 +68,13 @@ export { defineTool } from "./types";
 export type { ToolName, ToolNames } from "./types";
 
 // ============================================================================
+// Providers
+// ============================================================================
+export {GoogleProviderOptions, streamGoogle} from './providers/google';
+export {OpenAIProviderOptions, streamOpenAI} from './providers/openai';
+
+// ============================================================================
 // Event Streams
 // ============================================================================
 export { EventStream, AssistantMessageEventStream } from "./utils/event-stream";
+export {ThinkingLevel} from '@google/genai'
