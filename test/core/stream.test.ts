@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { stream } from '../src/stream';
-import { Model, Context } from '../src/types';
-import * as openaiProvider from '../src/providers/openai';
-import * as googleProvider from '../src/providers/google';
+import { stream } from '../../src/stream';
+import { Model, Context } from '../../src/types';
+import * as openaiProvider from '../../src/providers/openai';
+import * as googleProvider from '../../src/providers/google';
 import { ThinkingLevel } from '@google/genai';
 
 // Mock the provider modules

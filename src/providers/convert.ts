@@ -131,7 +131,7 @@ export function buildGoogleMessages(model: Model<'google'> ,context: Context): C
                         text: messageContent.content
                     })
                 }
-                if(messageContent.type === 'image'){
+                if(messageContent.type === 'image' && model.input.includes("image")){
                     parts.push({
                         inlineData: {
                             mimeType: messageContent.mimeType,
@@ -139,7 +139,7 @@ export function buildGoogleMessages(model: Model<'google'> ,context: Context): C
                         }
                     })
                 }
-                if(messageContent.type === 'file'){
+                if(messageContent.type === 'file' && model.input.includes("file")){
                     parts.push({
                         inlineData: {
                             mimeType: messageContent.mimeType,
@@ -162,7 +162,7 @@ export function buildGoogleMessages(model: Model<'google'> ,context: Context): C
                 if(messageContent.type === 'text'){
                     textRes = messageContent.content
                 }
-                if(messageContent.type === 'image'){
+                if(messageContent.type === 'image' && model.input.includes("image")){
                     parts.push({
                         inlineData: {
                             mimeType: messageContent.mimeType,
@@ -170,7 +170,7 @@ export function buildGoogleMessages(model: Model<'google'> ,context: Context): C
                         }
                     })
                 }
-                if(messageContent.type === 'file'){
+                if(messageContent.type === 'file' && model.input.includes("file")){
                     parts.push({
                         inlineData: {
                             mimeType: messageContent.mimeType,

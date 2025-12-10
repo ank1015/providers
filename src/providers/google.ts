@@ -381,7 +381,7 @@ function buildParams(model: Model<"google">, context: Context, options?: GoogleP
  * - Converts { "anyOf": [{ "const": "a" }, { "const": "b" }] } to { "enum": ["a", "b"] }
  * - Recursively processes nested objects and arrays
  */
-function transformSchemaForGoogle(schema: any): any {
+export function transformSchemaForGoogle(schema: any): any {
 	if (!schema || typeof schema !== 'object') {
 		return schema;
 	}

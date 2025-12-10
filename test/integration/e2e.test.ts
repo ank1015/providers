@@ -3,12 +3,14 @@ import { Type } from '@sinclair/typebox';
 import { stream } from '../../src/stream';
 import { MODELS } from '../../src/models.generated';
 import { Context } from '../../src/types';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // These tests will only run if API keys are set in environment
 // Set ENABLE_E2E_TESTS=true to run these tests
 // Set OPENAI_API_KEY and/or GEMINI_API_KEY to test specific providers
 
-const E2E_ENABLED = false;
+const E2E_ENABLED = process.env.ENABLE_E2E_TESTS === 'true';
 const HAS_OPENAI_KEY = Boolean(process.env.OPENAI_API_KEY);
 const HAS_GEMINI_KEY = Boolean(process.env.GEMINI_API_KEY);
 
@@ -276,6 +278,195 @@ describeE2E('E2E Integration Tests', () => {
 					expect(usage.cost.total).toBeGreaterThanOrEqual(0);
 				}
 			}
+		}, 30000);
+	});
+
+	// Multimodal Tests (Image and File Inputs)
+	describeOpenAI('OpenAI Multimodal Integration', () => {
+		it('should handle image input (vision)', async () => {
+			const imagePath = path.join(__dirname, '../data/red-circle.png');
+			const imageBuffer = fs.readFileSync(imagePath);
+			const base64Image = imageBuffer.toString('base64');
+
+			const context: Context = {
+				systemPrompt: 'You are a helpful assistant that can analyze images.',
+				messages: [
+					{
+						role: 'user',
+						content: [
+							{ type: 'text', content: 'What color is the main shape in this image? Answer in one word.' },
+							{ type: 'image', data: base64Image, mimeType: 'image/png' },
+						],
+						timestamp: Date.now(),
+					},
+				],
+			};
+
+			const response = stream(MODELS.openai['gpt-5-mini'], context);
+
+			let textReceived = '';
+			let hasImage = false;
+
+			for await (const event of response) {
+				if (event.type === 'text_delta') {
+					textReceived += event.delta;
+				}
+
+				if (event.type === 'done') {
+					expect(event.reason).toBe('stop');
+					expect(event.message.content.length).toBeGreaterThan(0);
+					// Check if the response mentions red (case insensitive)
+					expect(textReceived.toLowerCase()).toContain('red');
+				}
+			}
+
+			expect(textReceived.length).toBeGreaterThan(0);
+		}, 30000);
+
+		it('should handle mixed content (text + image)', async () => {
+			const imagePath = path.join(__dirname, '../data/red-circle.png');
+			const imageBuffer = fs.readFileSync(imagePath);
+			const base64Image = imageBuffer.toString('base64');
+
+			const context: Context = {
+				messages: [
+					{
+						role: 'user',
+						content: [
+							{ type: 'text', content: 'Describe this image briefly:' },
+							{ type: 'image', data: base64Image, mimeType: 'image/png' },
+							{ type: 'text', content: 'Be very concise.' },
+						],
+						timestamp: Date.now(),
+					},
+				],
+			};
+
+			const response = stream(MODELS.openai['gpt-5-mini'], context);
+
+			let completed = false;
+
+			for await (const event of response) {
+				if (event.type === 'done') {
+					completed = true;
+					expect(event.reason).toBe('stop');
+					expect(event.message.content.length).toBeGreaterThan(0);
+					expect(event.message.usage.totalTokens).toBeGreaterThan(0);
+				}
+			}
+
+			expect(completed).toBe(true);
+		}, 30000);
+	});
+
+	describeGoogle('Google Multimodal Integration', () => {
+		it('should handle image input', async () => {
+			const imagePath = path.join(__dirname, '../data/red-circle.png');
+			const imageBuffer = fs.readFileSync(imagePath);
+			const base64Image = imageBuffer.toString('base64');
+
+			const context: Context = {
+				systemPrompt: 'You are a helpful assistant that can analyze images.',
+				messages: [
+					{
+						role: 'user',
+						content: [
+							{ type: 'text', content: 'What color is the main shape in this image? Answer in one word.' },
+							{ type: 'image', data: base64Image, mimeType: 'image/png' },
+						],
+						timestamp: Date.now(),
+					},
+				],
+			};
+
+			const response = stream(MODELS.google['gemini-2.5-flash'], context);
+
+			let textReceived = '';
+
+			for await (const event of response) {
+				if (event.type === 'text_delta') {
+					textReceived += event.delta;
+				}
+
+				if (event.type === 'done') {
+					expect(event.reason).toBe('stop');
+					expect(event.message.content.length).toBeGreaterThan(0);
+					// Check if the response mentions red (case insensitive)
+					expect(textReceived.toLowerCase()).toContain('red');
+				}
+			}
+
+			expect(textReceived.length).toBeGreaterThan(0);
+		}, 30000);
+
+		it('should handle PDF file input', async () => {
+			const pdfPath = path.join(__dirname, '../data/superintelligentwill.pdf');
+			const pdfBuffer = fs.readFileSync(pdfPath);
+			const base64Pdf = pdfBuffer.toString('base64');
+
+			const context: Context = {
+				systemPrompt: 'You are a helpful assistant that can read documents.',
+				messages: [
+					{
+						role: 'user',
+						content: [
+							{ type: 'text', content: 'What type of document is this? Answer in 3 words or less.' },
+							{ type: 'file', data: base64Pdf, mimeType: 'application/pdf' },
+						],
+						timestamp: Date.now(),
+					},
+				],
+			};
+
+			const response = stream(MODELS.google['gemini-2.5-flash'], context);
+
+			let textReceived = '';
+
+			for await (const event of response) {
+				if (event.type === 'text_delta') {
+					textReceived += event.delta;
+				}
+
+				if (event.type === 'done') {
+					expect(event.reason).toBe('stop');
+					expect(event.message.content.length).toBeGreaterThan(0);
+				}
+			}
+
+			expect(textReceived.length).toBeGreaterThan(0);
+		}, 30000);
+
+		it('should handle mixed content (text + image + file)', async () => {
+			const imagePath = path.join(__dirname, '../data/red-circle.png');
+			const imageBuffer = fs.readFileSync(imagePath);
+			const base64Image = imageBuffer.toString('base64');
+
+			const context: Context = {
+				messages: [
+					{
+						role: 'user',
+						content: [
+							{ type: 'text', content: 'Describe this image briefly:' },
+							{ type: 'image', data: base64Image, mimeType: 'image/png' },
+						],
+						timestamp: Date.now(),
+					},
+				],
+			};
+
+			const response = stream(MODELS.google['gemini-2.5-flash'], context);
+
+			let completed = false;
+
+			for await (const event of response) {
+				if (event.type === 'done') {
+					completed = true;
+					expect(event.reason).toBe('stop');
+					expect(event.message.content.length).toBeGreaterThan(0);
+				}
+			}
+
+			expect(completed).toBe(true);
 		}, 30000);
 	});
 
