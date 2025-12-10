@@ -26,7 +26,7 @@ export function stream<TApi extends Api>(
 	options?: OptionsForApi<TApi>,
 ): AssistantMessageEventStream {
 
-    const apiKey = options?.apiKey || getApiKeyFromEnv(model.api)
+    const apiKey = options?.apiKey !== undefined ? options.apiKey : getApiKeyFromEnv(model.api)
     if(!apiKey){
 		throw new Error(`No API key for provider: ${model.api}`);
     }

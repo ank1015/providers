@@ -49,6 +49,9 @@ export function buildOpenAIMessages(model: Model<'openai'> ,context: Context): R
         // normalize for tool results
         if(message.role === 'toolResult'){
             const toolOutputs: ResponseFunctionCallOutputItemList = []
+            let hasText = false;
+            let hasImg = false;
+            let hasFile = false;
             for (let p=0; p< message.content.length; p++){
                 const content = message.content[p];
                 if(content.type === 'text'){
@@ -56,11 +59,7 @@ export function buildOpenAIMessages(model: Model<'openai'> ,context: Context): R
                         type: 'input_text',
                         text: content.content
                     })
-                }else{
-                    toolOutputs.push({
-                        type: 'input_text',
-                        text: '(see attached)'
-                    })
+                    hasText = true;
                 }
                 if(content.type === 'image'  && model.input.includes("image")){
                     toolOutputs.push({
@@ -68,13 +67,21 @@ export function buildOpenAIMessages(model: Model<'openai'> ,context: Context): R
                         detail: 'auto',
                         image_url: `data:${content.mimeType};base64,${content.data}`
                     })
+                    hasImg = true
                 }
                 if(content.type === 'file'  && model.input.includes("file")){
                     toolOutputs.push({
                         type: 'input_file',
                         file_data: `data:${content.mimeType};base64,${content.data}`
                     })
+                    hasFile = true
                 }
+            }
+            if(!hasText && (hasImg || hasFile)){
+                toolOutputs.push({
+                    type: 'input_text',
+                    text: '(see attached)'
+                })
             }
             const toolResultInput: ResponseInputItem.FunctionCallOutput = {
                 call_id: message.toolCallId!,

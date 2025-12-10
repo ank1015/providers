@@ -22,7 +22,7 @@ export interface AgentTool<TParameters extends TSchema = TSchema, TDetails = any
 
 // AgentContext is like Context but uses AgentTool
 export interface AgentContext {
-	systemPrompt: string;
+	systemPrompt?: string;
 	messages: Message[];
 	tools?: readonly AgentTool<any>[];
 }
