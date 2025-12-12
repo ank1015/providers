@@ -68,6 +68,15 @@ export { defineTool } from "./types";
 export type { ToolName, ToolNames } from "./types";
 
 // ============================================================================
+// Conversion Utilities
+// ============================================================================
+export {
+    convertOpenAINativeToAssistantMessage,
+    convertGoogleNativeToAssistantMessage,
+    convertNativeToAssistantMessage
+} from "./providers/convert";
+
+// ============================================================================
 // Providers
 // ============================================================================
 export {GoogleProviderOptions, streamGoogle} from './providers/google';
