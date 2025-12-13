@@ -10,6 +10,7 @@ import { parseStreamingJson } from "../utils/json-parse";
 import { validateToolArguments } from "../utils/validation";
 import { calculateCost } from "../models";
 import { Response } from "openai/resources/responses/responses.js";
+import { generateUUID } from "../utils/uuid";
 
 type Props = {
 	apiKey?: string;
@@ -25,6 +26,7 @@ export const streamOpenAI: StreamFunction<'openai'> = (
 ) => {
 
     const stream = new AssistantMessageEventStream();
+	const id = generateUUID();
 
 	// Start async processing
 	(async () => {
@@ -34,6 +36,7 @@ export const streamOpenAI: StreamFunction<'openai'> = (
 			content: [],
 			api: "openai" as Api,
 			model: model.id,
+			id,
 			usage: {
 				input: 0,
 				output: 0,
@@ -308,7 +311,8 @@ export const streamOpenAI: StreamFunction<'openai'> = (
 				message: finalResponse,
 				startTimestamp,
 				endTimestamp: Date.now(),
-				model: model
+				model: model,
+				id
 			});
 		}catch(error){
 			for (const block of output.content) delete (block as any).index;
@@ -326,6 +330,7 @@ export const streamOpenAI: StreamFunction<'openai'> = (
 				startTimestamp,
 				endTimestamp: Date.now(),
 				model: model,
+				id,
 				error: error instanceof Error ? {
 					message: error.message,
 					name: error.name,

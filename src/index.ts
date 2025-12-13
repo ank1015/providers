@@ -88,3 +88,5 @@ export {OpenAIProviderOptions, streamOpenAI} from './providers/openai';
 // ============================================================================
 export { EventStream, AssistantMessageEventStream } from "./utils/event-stream";
 export {ThinkingLevel} from '@google/genai'
+
+export * from './agent/tools'

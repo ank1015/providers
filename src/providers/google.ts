@@ -16,6 +16,7 @@ import { AssistantMessageEventStream } from "../utils/event-stream";
 import { buildGoogleMessages } from "./convert";
 import { calculateCost } from "../models";
 import { validateToolArguments } from "../utils/validation";
+import { generateUUID } from "../utils/uuid";
 
 type Props = {
 	apiKey?: string;
@@ -33,6 +34,7 @@ export const streamGoogle: StreamFunction<'google'> = (
     options: GoogleProviderOptions
 ) => {
     const stream = new AssistantMessageEventStream();
+	const id = generateUUID();
 
     (async () => {
 		const startTimestamp = Date.now();
@@ -41,6 +43,7 @@ export const streamGoogle: StreamFunction<'google'> = (
 			content: [],
 			api: "google-generative-ai" as Api,
 			model: model.id,
+			id,
 			usage: {
 				input: 0,
 				output: 0,
@@ -287,7 +290,8 @@ export const streamGoogle: StreamFunction<'google'> = (
                 message: finalResponse,
 				startTimestamp,
 				endTimestamp: Date.now(),
-				model: model
+				model: model,
+				id
             })
 
         } catch(error){
@@ -303,6 +307,7 @@ export const streamGoogle: StreamFunction<'google'> = (
 				startTimestamp,
 				endTimestamp: Date.now(),
 				model: model,
+				id,
 				error: error instanceof Error ? {
 					message: error.message,
 					name: error.name,

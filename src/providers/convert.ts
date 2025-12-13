@@ -314,7 +314,8 @@ export function convertOpenAINativeToAssistantMessage(
         stopReason,
         timestamp: nativeMessage.startTimestamp,
         duration: nativeMessage.endTimestamp - nativeMessage.startTimestamp,
-        errorMessage: nativeMessage.error?.message
+        errorMessage: nativeMessage.error?.message,
+        id: nativeMessage.id
     };
 
     // Add error message if status is failed
@@ -417,7 +418,8 @@ export function convertGoogleNativeToAssistantMessage(
         stopReason,
         timestamp: nativeMessage.startTimestamp,
         duration: nativeMessage.endTimestamp - nativeMessage.startTimestamp,
-        errorMessage: nativeMessage.error?.message
+        errorMessage: nativeMessage.error?.message,
+        id: nativeMessage.id
     };
 
     return assistantMessage;

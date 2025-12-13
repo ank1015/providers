@@ -32,12 +32,14 @@ export interface Model<TApi extends Api> {
 
 export interface UserMessage {
     role: "user"
+    id?: string;
     timestamp?: number;
     content: (UserTextContent | UserImageContent | UserFileContent)[] // Supports text, images and files
 }
 
 export interface ToolResultMessage<TDetails = any> {
 	role: "toolResult";
+	id?: string;
 	toolName: string;
 	toolCallId?: string;
     content: (UserTextContent | UserImageContent | UserFileContent)[]; // Supports text, images and files
@@ -80,6 +82,7 @@ export interface UserTextContent {
 
 export interface NativeOpenAIMessage {
 	role: "assistant"
+	id?: string;
     _provider: 'openai'
     message: Response
 	startTimestamp: number; // Unix timestamp when streaming started
@@ -94,6 +97,7 @@ export interface NativeOpenAIMessage {
 
 export interface NativeGoogleMessage {
 	role: "assistant"
+	id?: string;
     _provider: 'google'
     message: GenerateContentResponse
 	startTimestamp: number; // Unix timestamp when streaming started
@@ -159,6 +163,7 @@ export type StopReason = "stop" | "length" | "toolUse" | "error" | "aborted";
 // return content from assistant -> Thinking, Text, ToolCall, Image (for image models)
 export interface AssistantMessage {
 	role: "assistant";
+	id?: string;
 	content: (AssistantTextContent | AssistantThinkingContent | AssistantToolCall | AbstractedImageContent)[];
 	api: Api;
 	model: string;

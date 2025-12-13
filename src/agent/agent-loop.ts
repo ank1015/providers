@@ -3,6 +3,7 @@ import { UserMessage, Api, NativeAssistantMessage, Context, AssistantMessage, To
 import { AgentContext, AgentEvent, AgentLoopConfig, AgentTool, AgentToolResult, QueuedMessage } from "./types";
 import { stream as streamLLM } from "../stream";
 import { validateToolArguments } from "../utils/validation";
+import { generateUUID } from "../utils/uuid";
 
 // Main prompt function - returns a stream of events
 export function agentLoop<TApi extends Api>(
@@ -18,6 +19,10 @@ export function agentLoop<TApi extends Api>(
 
 	// Run the prompt async
 	(async () => {
+		// Add id to prompt if not provided
+		if (!prompt.id) {
+			prompt.id = generateUUID();
+		}
 		// Add timestamp to prompt if not provided
 		if (!prompt.timestamp) {
 			prompt.timestamp = Date.now();
@@ -354,6 +359,7 @@ async function executeToolCalls<T>(
 			isError,
 			error: errorDetails,
 			timestamp: Date.now(),
+			id: generateUUID()
 		};
 
 		results.push(toolResultMessage);
