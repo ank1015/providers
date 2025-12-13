@@ -193,31 +193,19 @@ async function streamAssistantResponse<TApi extends Api>(
 		};
 
 		// Create a minimal native message for the error
-		const errorNativeMessage: NativeAssistantMessage = config.model.api === 'openai'
-			? {
-				role: "assistant",
-				_provider: "openai",
-				message: {} as any,
-				startTimestamp: Date.now(),
-				endTimestamp: Date.now(),
-				error: error instanceof Error ? {
-					message: error.message,
-					name: error.name,
-					stack: error.stack
-				} : { message: String(error) }
-			}
-			: {
-				role: "assistant",
-				_provider: "google",
-				message: {} as any,
-				startTimestamp: Date.now(),
-				endTimestamp: Date.now(),
-				error: error instanceof Error ? {
-					message: error.message,
-					name: error.name,
-					stack: error.stack
-				} : { message: String(error) }
-			};
+		const errorNativeMessage: NativeAssistantMessage = {
+			role: "assistant",
+			_provider: config.model.api,
+			message: {} as any,
+			startTimestamp: Date.now(),
+			endTimestamp: Date.now(),
+			model: config.model as any,
+			error: error instanceof Error ? {
+				message: error.message,
+				name: error.name,
+				stack: error.stack
+			} : { message: String(error) }
+		}
 
 		stream.push({ type: "message_start", message: errorMessage });
 		stream.push({ type: "message_end", message: errorMessage });

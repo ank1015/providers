@@ -286,7 +286,8 @@ export const streamGoogle: StreamFunction<'google'> = (
                 role: 'assistant',
                 message: finalResponse,
 				startTimestamp,
-				endTimestamp: Date.now()
+				endTimestamp: Date.now(),
+				model: model
             })
 
         } catch(error){
@@ -301,6 +302,7 @@ export const streamGoogle: StreamFunction<'google'> = (
 				message: finalResponse,
 				startTimestamp,
 				endTimestamp: Date.now(),
+				model: model,
 				error: error instanceof Error ? {
 					message: error.message,
 					name: error.name,

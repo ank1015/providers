@@ -4,6 +4,7 @@ import { OpenAIProviderOptions } from "./providers/openai";
 import { AssistantMessageEventStream } from "./utils/event-stream";
 import { GoogleProviderOptions } from "./providers/google";
 import type { GenerateContentResponse } from "@google/genai";
+import { MODELS } from "./models.generated";
 
 export type Api = 'openai' | 'google'
 
@@ -83,6 +84,7 @@ export interface NativeOpenAIMessage {
     message: Response
 	startTimestamp: number; // Unix timestamp when streaming started
 	endTimestamp: number; // Unix timestamp when streaming ended
+	model: Model<'openai'>;
 	error?: {
 		message: string;
 		name?: string;
@@ -96,6 +98,7 @@ export interface NativeGoogleMessage {
     message: GenerateContentResponse
 	startTimestamp: number; // Unix timestamp when streaming started
 	endTimestamp: number; // Unix timestamp when streaming ended
+	model: Model<'google'>;
 	error?: {
 		message: string;
 		name?: string;

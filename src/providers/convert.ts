@@ -234,7 +234,6 @@ export function buildGoogleMessages(model: Model<'google'> ,context: Context): C
  */
 export function convertOpenAINativeToAssistantMessage(
     nativeMessage: NativeOpenAIMessage,
-    model: Model<'openai'>
 ): AssistantMessage {
     const response = nativeMessage.message;
     const content: (AssistantTextContent | AssistantThinkingContent | AssistantToolCall)[] = [];
@@ -289,7 +288,7 @@ export function convertOpenAINativeToAssistantMessage(
     };
 
     // Calculate costs
-    calculateCost(model, usage);
+    calculateCost(nativeMessage.model, usage);
 
     // Map stop reason
     let stopReason: StopReason = 'stop';
@@ -310,7 +309,7 @@ export function convertOpenAINativeToAssistantMessage(
         role: 'assistant',
         content,
         api: 'openai' as Api,
-        model: response.model || model.id,
+        model: response.model || nativeMessage.model.id,
         usage,
         stopReason,
         timestamp: nativeMessage.startTimestamp,
@@ -334,7 +333,6 @@ export function convertOpenAINativeToAssistantMessage(
  */
 export function convertGoogleNativeToAssistantMessage(
     nativeMessage: NativeGoogleMessage,
-    model: Model<'google'>
 ): AssistantMessage {
     const response = nativeMessage.message;
     const content: (AssistantTextContent | AssistantThinkingContent | AssistantToolCall)[] = [];
@@ -397,7 +395,7 @@ export function convertGoogleNativeToAssistantMessage(
     };
 
     // Calculate costs
-    calculateCost(model, usage);
+    calculateCost(nativeMessage.model, usage);
 
     // Map stop reason
     let stopReason: StopReason = 'stop';
@@ -414,7 +412,7 @@ export function convertGoogleNativeToAssistantMessage(
         role: 'assistant',
         content,
         api: 'google-generative-ai' as Api,
-        model: model.id,
+        model: nativeMessage.model.id,
         usage,
         stopReason,
         timestamp: nativeMessage.startTimestamp,
@@ -461,13 +459,12 @@ function mapGoogleFinishReason(reason: FinishReason): StopReason {
  * @returns AssistantMessage - Standardized assistant message
  */
 export function convertNativeToAssistantMessage(
-    nativeMessage: NativeAssistantMessage,
-    model: Model<any>
+    nativeMessage: NativeAssistantMessage
 ): AssistantMessage {
     if (nativeMessage._provider === 'openai') {
-        return convertOpenAINativeToAssistantMessage(nativeMessage, model as Model<'openai'>);
+        return convertOpenAINativeToAssistantMessage(nativeMessage);
     } else if (nativeMessage._provider === 'google') {
-        return convertGoogleNativeToAssistantMessage(nativeMessage, model as Model<'google'>);
+        return convertGoogleNativeToAssistantMessage(nativeMessage);
     } else {
         throw new Error(`Unknown provider: ${(nativeMessage as any)._provider}`);
     }

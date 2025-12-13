@@ -307,7 +307,8 @@ export const streamOpenAI: StreamFunction<'openai'> = (
 				role: 'assistant',
 				message: finalResponse,
 				startTimestamp,
-				endTimestamp: Date.now()
+				endTimestamp: Date.now(),
+				model: model
 			});
 		}catch(error){
 			for (const block of output.content) delete (block as any).index;
@@ -324,6 +325,7 @@ export const streamOpenAI: StreamFunction<'openai'> = (
 				message: finalResponse,
 				startTimestamp,
 				endTimestamp: Date.now(),
+				model: model,
 				error: error instanceof Error ? {
 					message: error.message,
 					name: error.name,
