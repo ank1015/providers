@@ -164,7 +164,7 @@ export type StopReason = "stop" | "length" | "toolUse" | "error" | "aborted";
 export interface AssistantMessage {
 	role: "assistant";
 	id?: string;
-	content: (AssistantTextContent | AssistantThinkingContent | AssistantToolCall | AbstractedImageContent)[];
+	content: (AssistantTextContent | AssistantThinkingContent | AssistantToolCall)[];
 	api: Api;
 	model: string;
 	usage: Usage;
@@ -175,7 +175,8 @@ export interface AssistantMessage {
 }
 
 export interface AssistantTextContent {
-    type: 'text'
+    type: 'text',
+	mimeType?: string,
     text: string
 }
 
