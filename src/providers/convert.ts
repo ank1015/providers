@@ -56,9 +56,13 @@ export function buildOpenAIMessages(model: Model<'openai'> ,context: Context): R
             for (let p=0; p< message.content.length; p++){
                 const content = message.content[p];
                 if(content.type === 'text'){
+                    // Prefix error messages so LLM knows the tool failed
+                    const textContent = message.isError
+                        ? `[TOOL ERROR] ${content.content}`
+                        : content.content;
                     toolOutputs.push({
                         type: 'input_text',
-                        text: content.content
+                        text: textContent
                     })
                     hasText = true;
                 }
@@ -81,7 +85,7 @@ export function buildOpenAIMessages(model: Model<'openai'> ,context: Context): R
             if(!hasText && (hasImg || hasFile)){
                 toolOutputs.push({
                     type: 'input_text',
-                    text: '(see attached)'
+                    text: message.isError ? '[TOOL ERROR] (see attached)' : '(see attached)'
                 })
             }
             const toolResultInput: ResponseInputItem.FunctionCallOutput = {
@@ -310,7 +314,8 @@ export function convertOpenAINativeToAssistantMessage(
         usage,
         stopReason,
         timestamp: nativeMessage.startTimestamp,
-        duration: nativeMessage.endTimestamp - nativeMessage.startTimestamp
+        duration: nativeMessage.endTimestamp - nativeMessage.startTimestamp,
+        errorMessage: nativeMessage.error?.message
     };
 
     // Add error message if status is failed
@@ -413,7 +418,8 @@ export function convertGoogleNativeToAssistantMessage(
         usage,
         stopReason,
         timestamp: nativeMessage.startTimestamp,
-        duration: nativeMessage.endTimestamp - nativeMessage.startTimestamp
+        duration: nativeMessage.endTimestamp - nativeMessage.startTimestamp,
+        errorMessage: nativeMessage.error?.message
     };
 
     return assistantMessage;

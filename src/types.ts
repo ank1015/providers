@@ -83,6 +83,11 @@ export interface NativeOpenAIMessage {
     message: Response
 	startTimestamp: number; // Unix timestamp when streaming started
 	endTimestamp: number; // Unix timestamp when streaming ended
+	error?: {
+		message: string;
+		name?: string;
+		stack?: string;
+	}; // Error details if streaming failed
 }
 
 export interface NativeGoogleMessage {
@@ -91,6 +96,11 @@ export interface NativeGoogleMessage {
     message: GenerateContentResponse
 	startTimestamp: number; // Unix timestamp when streaming started
 	endTimestamp: number; // Unix timestamp when streaming ended
+	error?: {
+		message: string;
+		name?: string;
+		stack?: string;
+	}; // Error details if streaming failed
 }
 
 export type NativeAssistantMessage = NativeOpenAIMessage | NativeGoogleMessage;

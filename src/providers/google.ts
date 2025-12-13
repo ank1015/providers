@@ -300,7 +300,12 @@ export const streamGoogle: StreamFunction<'google'> = (
 				role: 'assistant',
 				message: finalResponse,
 				startTimestamp,
-				endTimestamp: Date.now()
+				endTimestamp: Date.now(),
+				error: error instanceof Error ? {
+					message: error.message,
+					name: error.name,
+					stack: error.stack
+				} : { message: String(error) }
 			})
         }
 

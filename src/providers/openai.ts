@@ -317,18 +317,18 @@ export const streamOpenAI: StreamFunction<'openai'> = (
 
 			// Update finalResponse to reflect the error state
 			finalResponse.status = options?.signal?.aborted ? "cancelled" : "failed";
-			finalResponse.error = error instanceof Error ? {
-				message: error.message,
-				code: (error as any).code || "unknown_error",
-				type: error.name || "Error"
-			} as any : { message: String(error) } as any;
 
 			stream.end({
 				_provider: 'openai',
 				role: 'assistant',
 				message: finalResponse,
 				startTimestamp,
-				endTimestamp: Date.now()
+				endTimestamp: Date.now(),
+				error: error instanceof Error ? {
+					message: error.message,
+					name: error.name,
+					stack: error.stack
+				} : { message: String(error) }
 			});
 		}
     })()

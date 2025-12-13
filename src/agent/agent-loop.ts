@@ -120,12 +120,15 @@ export function agentLoop<TApi extends Api>(
 
 			stream.push({ type: "turn_end", turnNumber, status: turnStatus });
 
-			// If turn was aborted or had error, end the agent loop
-			if (turnStatus === "aborted" || turnStatus === "error") {
-				stream.push({ type: "agent_end", status: turnStatus });
+			// Only terminate on abort - tool errors should be sent back to LLM for handling
+			if (turnStatus === "aborted") {
+				stream.push({ type: "agent_end", status: "aborted" });
 				stream.end(newMessages);
 				return;
 			}
+
+			// If tool had error, the ToolResultMessage with isError=true is now in context
+			// Loop will continue, LLM will see the error and can respond appropriately
 
 			// Get queued messages after turn completes
 			try {
@@ -161,9 +164,66 @@ async function streamAssistantResponse<TApi extends Api>(
 	// Convert AgentContext to Context for stream
 	// Use a copy of messages to avoid mutating the original context
 
-	const processedMessages = config.preprocessor
-		? await config.preprocessor(context.messages, signal)
-		: [...context.messages];
+	let processedMessages: AgentContext["messages"];
+	try {
+		processedMessages = config.preprocessor
+			? await config.preprocessor(context.messages, signal)
+			: [...context.messages];
+	} catch (error) {
+		// Preprocessor error - create error assistant message
+		const errorMessage: AssistantMessage = {
+			role: "assistant",
+			content: [{
+				type: "text",
+				text: `Preprocessor error: ${error instanceof Error ? error.message : String(error)}`
+			}],
+			api: config.model.api,
+			model: config.model.id,
+			usage: {
+				input: 0,
+				output: 0,
+				cacheRead: 0,
+				cacheWrite: 0,
+				totalTokens: 0,
+				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 }
+			},
+			stopReason: "error",
+			errorMessage: error instanceof Error ? error.message : String(error),
+			timestamp: Date.now()
+		};
+
+		// Create a minimal native message for the error
+		const errorNativeMessage: NativeAssistantMessage = config.model.api === 'openai'
+			? {
+				role: "assistant",
+				_provider: "openai",
+				message: {} as any,
+				startTimestamp: Date.now(),
+				endTimestamp: Date.now(),
+				error: error instanceof Error ? {
+					message: error.message,
+					name: error.name,
+					stack: error.stack
+				} : { message: String(error) }
+			}
+			: {
+				role: "assistant",
+				_provider: "google",
+				message: {} as any,
+				startTimestamp: Date.now(),
+				endTimestamp: Date.now(),
+				error: error instanceof Error ? {
+					message: error.message,
+					name: error.name,
+					stack: error.stack
+				} : { message: String(error) }
+			};
+
+		stream.push({ type: "message_start", message: errorMessage });
+		stream.push({ type: "message_end", message: errorMessage });
+
+		return { finalMessage: errorNativeMessage, finalAssistantMessage: errorMessage };
+	}
 
 	const processedContext: Context = {
 		systemPrompt: context.systemPrompt,
