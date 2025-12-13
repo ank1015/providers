@@ -50,6 +50,11 @@ export interface ToolResultMessage<TDetails = any> {
 	timestamp: number; // Unix timestamp in milliseconds
 }
 
+export interface CustomMessage {
+	role: "custom";
+	content: Record<string, any>; // Any custom data structure for application-specific metadata
+}
+
 export interface UserImageContent {
     type: "image"
 	data: string; // base64 encoded image data
@@ -92,7 +97,7 @@ export type NativeAssistantMessage = NativeOpenAIMessage | NativeGoogleMessage;
 
 // ################################ Types for Stored Message
 
-export type Message = UserMessage | NativeAssistantMessage | ToolResultMessage
+export type Message = UserMessage | NativeAssistantMessage | ToolResultMessage | CustomMessage
 
 export interface Tool<TParameters extends TSchema = TSchema, TName extends string = string> {
 	name: TName;

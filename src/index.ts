@@ -15,6 +15,7 @@ export type {
 	ToolResultMessage,
 	NativeAssistantMessage,
 	NativeOpenAIMessage,
+	CustomMessage,
 
 	// Content types
 	UserTextContent,
