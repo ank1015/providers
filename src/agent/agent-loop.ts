@@ -18,6 +18,11 @@ export function agentLoop<TApi extends Api>(
 
 	// Run the prompt async
 	(async () => {
+		// Add timestamp to prompt if not provided
+		if (!prompt.timestamp) {
+			prompt.timestamp = Date.now();
+		}
+
 		// Track new messages generated during this prompt
 		const newMessages: AgentContext["messages"] = [];
 		// Create user message for the prompt
@@ -25,7 +30,11 @@ export function agentLoop<TApi extends Api>(
 		newMessages.push(prompt);
 
 		stream.push({ type: "agent_start" });
-		stream.push({ type: "turn_start" });
+
+		// Track turn number
+		let turnNumber = 0;
+
+		stream.push({ type: "turn_start", turnNumber });
 		stream.push({ type: "message_start", message: prompt });
 		stream.push({ type: "message_end", message: prompt });
 
@@ -37,7 +46,6 @@ export function agentLoop<TApi extends Api>(
 
 		// Keep looping while we have tool calls or queued messages
 		let hasMoreToolCalls = true;
-		let firstTurn = true;
 		let queuedMessages: QueuedMessage<any>[] = [];
 
 		// Safely get queued messages, handling any errors
@@ -49,18 +57,25 @@ export function agentLoop<TApi extends Api>(
 		}
 
 		while (hasMoreToolCalls || queuedMessages.length > 0) {
-			if (!firstTurn) {
-				stream.push({ type: "turn_start" });
-			} else {
-				firstTurn = false;
+			// Increment turn number for subsequent turns
+			if (turnNumber > 0) {
+				stream.push({ type: "turn_start", turnNumber });
 			}
 
 			// Process queued messages first (inject before next assistant response)
 			if (queuedMessages.length > 0) {
 				for (const { original, llm } of queuedMessages) {
+					// Add timestamp to user messages if not provided
+					if (original.role === 'user' && !original.timestamp) {
+						original.timestamp = Date.now();
+					}
 					stream.push({ type: "message_start", message: original });
 					stream.push({ type: "message_end", message: original });
 					if (llm) {
+						// Add timestamp to LLM message if it's a user message without timestamp
+						if (llm.role === 'user' && !llm.timestamp) {
+							llm.timestamp = Date.now();
+						}
 						currentContext.messages.push(llm);
 						newMessages.push(llm);
 					}
@@ -76,18 +91,16 @@ export function agentLoop<TApi extends Api>(
 			// Check if assistant message is valid
 			if (!finalAssistantMessage) {
 				// This should never happen, but handle it gracefully
-				stream.push({ type: "agent_end", messages: newMessages, status: "error" });
+				stream.push({ type: "turn_end", turnNumber, status: "error" });
+				stream.push({ type: "agent_end", status: "error" });
 				stream.end(newMessages);
 				return;
 			}
 
 			if(finalAssistantMessage.stopReason === 'aborted' || finalAssistantMessage.stopReason === "error"){
-				stream.push({ type: "turn_end", message:finalAssistantMessage, toolResults: [] });
-				stream.push({
-					type: "agent_end",
-					messages: newMessages,
-					status: finalAssistantMessage.stopReason === 'aborted' ? "aborted" : "error"
-				});
+				const status = finalAssistantMessage.stopReason === 'aborted' ? "aborted" : "error";
+				stream.push({ type: "turn_end", turnNumber, status });
+				stream.push({ type: "agent_end", status });
 				stream.end(newMessages);
 				return;
 			}
@@ -96,14 +109,23 @@ export function agentLoop<TApi extends Api>(
 			const toolCalls = finalAssistantMessage.content.filter((c) => c.type === "toolCall");
 			hasMoreToolCalls = toolCalls.length > 0;
 
-			const toolResults: ToolResultMessage[] = [];
+			let turnStatus: "completed" | "aborted" | "error" = "completed";
 			if (hasMoreToolCalls) {
 				// Execute tool calls
-				toolResults.push(...(await executeToolCalls(currentContext.tools, finalAssistantMessage, signal, stream)));
-				currentContext.messages.push(...toolResults);
-				newMessages.push(...toolResults);
+				const toolExecutionStatus = await executeToolCalls(currentContext.tools, finalAssistantMessage, signal, stream);
+				currentContext.messages.push(...toolExecutionStatus.results);
+				newMessages.push(...toolExecutionStatus.results);
+				turnStatus = toolExecutionStatus.status;
 			}
-			stream.push({ type: "turn_end", message: finalAssistantMessage, toolResults: toolResults });
+
+			stream.push({ type: "turn_end", turnNumber, status: turnStatus });
+
+			// If turn was aborted or had error, end the agent loop
+			if (turnStatus === "aborted" || turnStatus === "error") {
+				stream.push({ type: "agent_end", status: turnStatus });
+				stream.end(newMessages);
+				return;
+			}
 
 			// Get queued messages after turn completes
 			try {
@@ -112,8 +134,11 @@ export function agentLoop<TApi extends Api>(
 				console.warn("Error getting queued messages:", error instanceof Error ? error.message : String(error));
 				queuedMessages = [];
 			}
+
+			// Increment turn number for next iteration
+			turnNumber++;
 		}
-		stream.push({ type: "agent_end", messages: newMessages, status: "completed" });
+		stream.push({ type: "agent_end", status: "completed" });
 		stream.end(newMessages);
 	})()
 
@@ -172,7 +197,7 @@ async function streamAssistantResponse<TApi extends Api>(
 				if (partialMessage) {
 					partialMessage = event.partial;
 					// context.messages[context.messages.length - 1] = partialMessage;
-					stream.push({ type: "message_update", assistantMessageEvent: event, message: { ...partialMessage } });
+					stream.push({ type: "message_update", assistantMessageEvent: event });
 				}
 				break;
 
@@ -193,15 +218,21 @@ async function streamAssistantResponse<TApi extends Api>(
 	return {finalAssistantMessage: partialMessage!, finalMessage}
 }
 
+interface ExecuteToolCallsResult<T> {
+	results: ToolResultMessage<T>[];
+	status: "completed" | "aborted" | "error";
+}
+
 async function executeToolCalls<T>(
 	tools: readonly AgentTool<any, T>[] | undefined,
 	assistantMessage: AssistantMessage,
 	signal: AbortSignal | undefined,
 	stream: EventStream<AgentEvent, AgentContext["messages"]>,
-): Promise<ToolResultMessage<T>[]> {
-	
+): Promise<ExecuteToolCallsResult<T>> {
+
 	const toolCalls = assistantMessage.content.filter((c) => c.type === "toolCall");
 	const results: ToolResultMessage<any>[] = [];
+	let overallStatus: "completed" | "aborted" | "error" = "completed";
 
 	for (const toolCall of toolCalls) {
 		const tool = tools?.find((t) => t.name === toolCall.name);
@@ -214,6 +245,7 @@ async function executeToolCalls<T>(
 		});
 		let resultOrError: AgentToolResult<T> | string;
 		let isError = false;
+		let toolStatus: "completed" | "aborted" | "error" = "completed";
 
 		let errorDetails: ToolResultMessage["error"] | undefined;
 
@@ -233,6 +265,18 @@ async function executeToolCalls<T>(
 		} catch (e) {
 			resultOrError = e instanceof Error ? e.message : String(e);
 			isError = true;
+
+			// Check if it was an abort
+			if (e instanceof Error && e.name === "AbortError") {
+				toolStatus = "aborted";
+				overallStatus = "aborted";
+			} else {
+				toolStatus = "error";
+				if (overallStatus === "completed") {
+					overallStatus = "error";
+				}
+			}
+
 			// Preserve full error details for debugging
 			if (e instanceof Error) {
 				errorDetails = {
@@ -246,9 +290,7 @@ async function executeToolCalls<T>(
 		stream.push({
 			type: "tool_execution_end",
 			toolCallId: toolCall.id!,
-			toolName: toolCall.name,
-			result: resultOrError,
-			isError,
+			status: toolStatus,
 		});
 
 		// Convert result to content blocks
@@ -271,5 +313,5 @@ async function executeToolCalls<T>(
 		stream.push({ type: "message_end", message: toolResultMessage });
 	}
 
-	return results;
+	return { results, status: overallStatus };
 }

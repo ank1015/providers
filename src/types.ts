@@ -31,7 +31,7 @@ export interface Model<TApi extends Api> {
 
 export interface UserMessage {
     role: "user"
-    timestamp: number;
+    timestamp?: number;
     content: (UserTextContent | UserImageContent | UserFileContent)[] // Supports text, images and files
 }
 
@@ -54,17 +54,20 @@ export interface UserImageContent {
     type: "image"
 	data: string; // base64 encoded image data
 	mimeType: string; // e.g., "image/jpeg", "image/png"
+	metadata?: Record<string, any>; // Optional metadata for storage purposes
 }
 
 export interface UserFileContent {
     type: "file"
 	data: string; // base64 buffer encoded data
 	mimeType: string; // e.g., "application/pdf",
+	metadata?: Record<string, any>; // Optional metadata for storage purposes
 }
 
 export interface UserTextContent {
     type: 'text'
     content: string
+	metadata?: Record<string, any>; // Optional metadata for storage purposes
 }
 
 // ################################ Types for Native Assistant Message
@@ -73,12 +76,16 @@ export interface NativeOpenAIMessage {
 	role: "assistant"
     _provider: 'openai'
     message: Response
+	startTimestamp: number; // Unix timestamp when streaming started
+	endTimestamp: number; // Unix timestamp when streaming ended
 }
 
 export interface NativeGoogleMessage {
 	role: "assistant"
     _provider: 'google'
     message: GenerateContentResponse
+	startTimestamp: number; // Unix timestamp when streaming started
+	endTimestamp: number; // Unix timestamp when streaming ended
 }
 
 export type NativeAssistantMessage = NativeOpenAIMessage | NativeGoogleMessage;
@@ -141,6 +148,7 @@ export interface AssistantMessage {
 	stopReason: StopReason;
 	errorMessage?: string;
 	timestamp: number; // Unix timestamp in milliseconds
+	duration?: number; // Duration in milliseconds (endTimestamp - startTimestamp)
 }
 
 export interface AssistantTextContent {

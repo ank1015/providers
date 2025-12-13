@@ -35,7 +35,7 @@ export const streamGoogle: StreamFunction<'google'> = (
     const stream = new AssistantMessageEventStream();
 
     (async () => {
-
+		const startTimestamp = Date.now();
 		const output: AssistantMessage = {
 			role: "assistant",
 			content: [],
@@ -50,7 +50,7 @@ export const streamGoogle: StreamFunction<'google'> = (
 				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 			},
 			stopReason: "stop",
-			timestamp: Date.now(),
+			timestamp: startTimestamp,
 		};
 
         let finalResponse: GenerateContentResponse = {
@@ -284,7 +284,9 @@ export const streamGoogle: StreamFunction<'google'> = (
             stream.end({
                 _provider: 'google',
                 role: 'assistant',
-                message: finalResponse
+                message: finalResponse,
+				startTimestamp,
+				endTimestamp: Date.now()
             })
 
         } catch(error){
@@ -296,7 +298,9 @@ export const streamGoogle: StreamFunction<'google'> = (
 			stream.end({
 				_provider: 'google',
 				role: 'assistant',
-				message: finalResponse
+				message: finalResponse,
+				startTimestamp,
+				endTimestamp: Date.now()
 			})
         }
 

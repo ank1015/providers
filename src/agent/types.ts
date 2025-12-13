@@ -33,28 +33,21 @@ export type AgentEvent =
 	// Emitted when the agent starts. An agent can emit multiple turns
 	| { type: "agent_start" }
 	// Emitted when a turn starts. A turn can emit an optional user message (initial prompt), an assistant message (response) and multiple tool result messages
-	| { type: "turn_start" }
+	| { type: "turn_start"; turnNumber: number }
 	// Emitted when a user, assistant or tool result message starts
 	| { type: "message_start"; message: AssistantMessage | UserMessage | ToolResultMessage }
 	// Emitted when an asssitant messages is updated due to streaming
-	| { type: "message_update"; assistantMessageEvent: AssistantMessageEvent; message: AssistantMessage }
+	| { type: "message_update"; assistantMessageEvent: AssistantMessageEvent }
 	// Emitted when a user, assistant or tool result message is complete
 	| { type: "message_end"; message: AssistantMessage | UserMessage | ToolResultMessage }
 	// Emitted when a tool execution starts
 	| { type: "tool_execution_start"; toolCallId: string; toolName: string; args: any }
 	// Emitted when a tool execution completes
-	| {
-			type: "tool_execution_end";
-			toolCallId: string;
-			toolName: string;
-			result: AgentToolResult<any> | string;
-			isError: boolean;
-	  }
+	| { type: "tool_execution_end"; toolCallId: string; status: "completed" | "aborted" | "error" }
 	// Emitted when a full turn completes
-	| { type: "turn_end"; message: AssistantMessage; toolResults: ToolResultMessage[] }
-	// Emitted when the agent has completed all its turns. All messages from every turn are
-	// contained in messages, which can be appended to the context
-	| { type: "agent_end"; messages: AgentContext["messages"]; status: "completed" | "aborted" | "error" };
+	| { type: "turn_end"; turnNumber: number; status: "completed" | "aborted" | "error" }
+	// Emitted when the agent has completed all its turns
+	| { type: "agent_end"; status: "completed" | "aborted" | "error" };
 
 // Queued message with optional LLM representation
 export interface QueuedMessage<TApp = Message> {

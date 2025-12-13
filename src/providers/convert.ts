@@ -309,7 +309,8 @@ export function convertOpenAINativeToAssistantMessage(
         model: response.model || model.id,
         usage,
         stopReason,
-        timestamp: Date.now()
+        timestamp: nativeMessage.startTimestamp,
+        duration: nativeMessage.endTimestamp - nativeMessage.startTimestamp
     };
 
     // Add error message if status is failed
@@ -411,7 +412,8 @@ export function convertGoogleNativeToAssistantMessage(
         model: model.id,
         usage,
         stopReason,
-        timestamp: Date.now()
+        timestamp: nativeMessage.startTimestamp,
+        duration: nativeMessage.endTimestamp - nativeMessage.startTimestamp
     };
 
     return assistantMessage;

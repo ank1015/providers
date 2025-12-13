@@ -28,6 +28,7 @@ export const streamOpenAI: StreamFunction<'openai'> = (
 
 	// Start async processing
 	(async () => {
+		const startTimestamp = Date.now();
 		const output: AssistantMessage = {
 			role: "assistant",
 			content: [],
@@ -42,7 +43,7 @@ export const streamOpenAI: StreamFunction<'openai'> = (
 				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 			},
 			stopReason: "stop",
-			timestamp: Date.now(),
+			timestamp: startTimestamp,
 		};
 		let finalResponse: Response = {
 			id: "resp_123",
@@ -304,7 +305,9 @@ export const streamOpenAI: StreamFunction<'openai'> = (
 			stream.end({
 				_provider: 'openai',
 				role: 'assistant',
-				message: finalResponse
+				message: finalResponse,
+				startTimestamp,
+				endTimestamp: Date.now()
 			});
 		}catch(error){
 			for (const block of output.content) delete (block as any).index;
@@ -323,7 +326,9 @@ export const streamOpenAI: StreamFunction<'openai'> = (
 			stream.end({
 				_provider: 'openai',
 				role: 'assistant',
-				message: finalResponse
+				message: finalResponse,
+				startTimestamp,
+				endTimestamp: Date.now()
 			});
 		}
     })()
