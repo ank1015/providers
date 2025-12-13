@@ -5,25 +5,17 @@ import { AssistantMessageEventStream } from "../utils/event-stream";
 import { StreamFunction, Model, Context, Tool, Api, AssistantMessage, AssistantThinkingContent, AssistantTextContent, AssistantToolCall, StopReason } from "../types";
 import { buildOpenAIMessages } from "./convert";
 import { ResponseCreateParamsStreaming } from "openai/resources/responses/responses.js";
-import type {Tool as OpenAITool, ResponseFunctionToolCall, ResponseOutputMessage, ResponseReasoningItem,} from "openai/resources/responses/responses.js";
+import type {Tool as OpenAITool, ResponseCreateParamsBase, ResponseFunctionToolCall, ResponseOutputMessage, ResponseReasoningItem,} from "openai/resources/responses/responses.js";
 import { parseStreamingJson } from "../utils/json-parse";
 import { validateToolArguments } from "../utils/validation";
 import { calculateCost } from "../models";
 import { Response } from "openai/resources/responses/responses.js";
-export interface OpenAIProviderOptions {
+
+type Props = {
 	apiKey?: string;
 	signal?: AbortSignal;
-	maxOutputTokens?: number;
-	parallelToolCalls?: boolean;
-	prompt_cache_key?: string;
-	promptCacheRetention?: 'in-memory' | '24h' | null;
-	reasoning?: {
-		effort?: 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | null;
-		summary?: 'auto' | 'concise' | 'detailed' | null;
-	};
-	temperature?: number;
-	truncation?: 'auto' | 'disabled' | null;
 }
+export type OpenAIProviderOptions = Omit<ResponseCreateParamsBase, 'model' | 'input' | 'tools'> & Props
 
 // takes in model, built in message
 export const streamOpenAI: StreamFunction<'openai'> = (
@@ -357,49 +349,26 @@ function createClient(model: Model<"openai">, apiKey?: string) {
 	});
 }
 
-function buildParams(model: Model<"openai">, context: Context, options?: OpenAIProviderOptions){
+function buildParams(model: Model<"openai">, context: Context, options: OpenAIProviderOptions){
 	const messages = buildOpenAIMessages(model, context);
 
+	const {apiKey, signal, ...openaiOptions} = options
+
 	const params: ResponseCreateParamsStreaming = {
-		include: ['reasoning.encrypted_content'],
-		input: messages,
-		model: model.id,
+		...openaiOptions, 
 		stream: true
 	}
 
-	if(options?.maxOutputTokens){
-		params.max_output_tokens = options.maxOutputTokens;
-	}
 
-	if(options?.parallelToolCalls){
-		params.parallel_tool_calls = options.parallelToolCalls;
-	}
+	params.model = model.id;
+	params.input = messages
 
-	if(options?.prompt_cache_key){
-		params.prompt_cache_key = options.prompt_cache_key;
-	}
-
-	if(options?.promptCacheRetention){
-		params.prompt_cache_retention = options.promptCacheRetention;
-	}
-
-	if(options?.reasoning){
-		params.reasoning = {
-			effort: options.reasoning.effort ||  "medium",
-			summary: options.reasoning.summary || "auto"
-		}
-	}
-
-	if(options?.temperature){
-		params.temperature = options.temperature
+	if(!params.include?.includes('reasoning.encrypted_content')){
+		params.include?.push('reasoning.encrypted_content');
 	}
 
 	if(context.tools){
 		params.tools = convertTools(context.tools)
-	}
-
-	if(options?.truncation){
-		params.truncation = options.truncation
 	}
 
 	return params;

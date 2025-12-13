@@ -7,6 +7,7 @@ import type { GenerateContentResponse } from "@google/genai";
 
 export type Api = 'openai' | 'google'
 
+export const KnownApi: Api[] = ['openai', 'google']
 export interface Model<TApi extends Api> {
 	id: string;
 	name: string;

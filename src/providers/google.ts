@@ -17,20 +17,12 @@ import { buildGoogleMessages } from "./convert";
 import { calculateCost } from "../models";
 import { validateToolArguments } from "../utils/validation";
 
-export interface GoogleProviderOptions {
+type Props = {
 	apiKey?: string;
 	signal?: AbortSignal;
-    temperature?: number;
-    maxOutputTokens?: number;
-    responseMimeType?: string;
-    thinkingConfig? : {
-        thinkingLevel: ThinkingLevel
-    };
-    imageConfig? : {
-        aspectRatio?: "1:1" | "2:3" | "3:2" | "3:4" | "4:3" | "9:16" | "16:9" | "21:9";
-        imageSize?: '1K' | '2K' | '4K';
-    }
 }
+
+export type GoogleProviderOptions = Omit<GenerateContentConfig, 'abortSignal' | 'tools' | 'systemPrompt'> & Props
 
 // Counter for generating unique tool call IDs
 let toolCallCounter = 0;
@@ -328,41 +320,26 @@ function createClient(model: Model<"google">, apiKey?: string): GoogleGenAI {
 	});
 }
 
-function buildParams(model: Model<"google">, context: Context, options?: GoogleProviderOptions){
+function buildParams(model: Model<"google">, context: Context, options: GoogleProviderOptions){
 
     const contents = buildGoogleMessages(model, context);
 
-	const config: GenerateContentConfig = {}
+	const {apiKey, signal, ...googleOptions} = options
+
+	const config: GenerateContentConfig = {
+		...googleOptions
+	}
 
     if(options?.signal){
         config.abortSignal = options.signal;
     }
+
     if(context.systemPrompt){
         config.systemInstruction = sanitizeSurrogates(context.systemPrompt);
     }
-    if(options?.temperature){
-        config.temperature = options.temperature;
-    }
-    if(options?.maxOutputTokens){
-        config.maxOutputTokens = options.maxOutputTokens;
-    }
-    if(options?.responseMimeType){
-        config.responseMimeType = options.responseMimeType;
-    }
+
     if(context.tools){
         config.tools = convertTools(context.tools)
-    }
-    if(options?.thinkingConfig){
-        config.thinkingConfig = {
-            includeThoughts: true,
-            thinkingLevel: options.thinkingConfig.thinkingLevel
-        }
-    }
-    if(options?.imageConfig){
-        config.imageConfig = {
-            imageSize: options.imageConfig.imageSize,
-            aspectRatio: options.imageConfig.aspectRatio
-        }
     }
 
 	const params: GenerateContentParameters = {

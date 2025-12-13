@@ -1,4 +1,4 @@
-import type { Model, Context, Api, OptionsForApi } from "./types";
+import type { Model, Context, Api, OptionsForApi, NativeAssistantMessage } from "./types";
 import { AssistantMessageEventStream } from "./utils/event-stream";
 import { streamOpenAI, OpenAIProviderOptions } from "./providers/openai";
 import { streamGoogle, GoogleProviderOptions } from "./providers/google";
@@ -57,4 +57,14 @@ export function stream<TApi extends Api>(
         }
     }
 
+}
+
+export async function complete<TApi extends Api>(
+	model: Model<TApi>,
+	context: Context,
+	options?: OptionsForApi<TApi>,
+): Promise<NativeAssistantMessage> {
+	const assistantStream = stream(model, context, options);
+	const result = await assistantStream.result()
+	return result;
 }
