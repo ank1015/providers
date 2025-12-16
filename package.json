@@ -23,11 +23,13 @@
 		"ajv": "^8.17.1",
 		"ajv-formats": "^3.0.1",
 		"openai": "^6.9.1",
-		"partial-json": "^0.1.7"
+		"partial-json": "^0.1.7",
+		"uuid": "^13.0.0"
 	},
 	"devDependencies": {
 		"@types/node": "^24.10.1",
-		"vitest": "^4.0.14",
-		"typescript": "^5.9.3"
+		"@types/uuid": "^11.0.0",
+		"typescript": "^5.9.3",
+		"vitest": "^4.0.14"
 	}
 }
