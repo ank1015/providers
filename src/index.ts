@@ -2,7 +2,7 @@
 // Main Functions
 
 // ============================================================================
-export { stream } from "./stream";
+export { stream, complete, getApiKeyFromEnv } from "./stream";
 export { agentLoop } from "./agent/agent-loop";
 
 // ============================================================================
@@ -60,7 +60,7 @@ export type {
 // Models and Registry
 // ============================================================================
 export { MODELS } from "./models.generated";
-export { calculateCost, getModel } from "./models";
+export { calculateCost, getModel, getModels } from "./models";
 
 // ============================================================================
 // Utilities

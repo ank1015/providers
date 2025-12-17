@@ -15,7 +15,7 @@ const envMap: Record<Api, string> = {
 };
 
 
-function getApiKeyFromEnv(api: Api){
+export function getApiKeyFromEnv(api: Api){
     const envVar = envMap[api]
     return process.env[envVar]
 }

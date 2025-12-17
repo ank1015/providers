@@ -24,6 +24,13 @@ export function getModel<TApi extends Api, TModelId extends keyof (typeof MODELS
 	return modelRegistry.get(api)?.get(modelId as string) as Model<ModelApi<TApi, TModelId>>;
 }
 
+export function getModels<TApi extends Api>(
+	api: TApi,
+): Model<ModelApi<TApi, keyof (typeof MODELS)[TApi]>>[] {
+	const models = modelRegistry.get(api);
+	return models ? (Array.from(models.values()) as Model<ModelApi<TApi, keyof (typeof MODELS)[TApi]>>[]) : [];
+}
+
 // export function getProviders(): KnownProvider[] {
 // 	return Array.from(modelRegistry.keys()) as KnownProvider[];
 // }
