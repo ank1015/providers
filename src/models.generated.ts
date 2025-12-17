@@ -139,6 +139,7 @@ export const MODELS = {
 			},
 			contextWindow: 400000,
 			maxTokens: 128000,
+			excludeSettings: ['temperature']
 		} satisfies Model<"openai">,
 		"gpt-5.1-codex-mini": {
 			id: "gpt-5.1-codex-mini",
@@ -155,6 +156,7 @@ export const MODELS = {
 			},
 			contextWindow: 400000,
 			maxTokens: 128000,
+			excludeSettings: ['temperature']
 		} satisfies Model<"openai">,
 		"gpt-5.1": {
 			id: "gpt-5.1",
@@ -171,6 +173,7 @@ export const MODELS = {
 			},
 			contextWindow: 400000,
 			maxTokens: 128000,
+			excludeSettings: ['temperature']
 		} satisfies Model<"openai">,
 		"codex-mini-latest": {
 			id: "codex-mini-latest",
@@ -187,6 +190,7 @@ export const MODELS = {
 			},
 			contextWindow: 200000,
 			maxTokens: 100000,
+			excludeSettings: ['temperature']
 		} satisfies Model<"openai">,
 		"gpt-5-nano": {
 			id: "gpt-5-nano",
@@ -203,6 +207,7 @@ export const MODELS = {
 			},
 			contextWindow: 400000,
 			maxTokens: 128000,
+			excludeSettings: ['temperature']
 		} satisfies Model<"openai">,
 		"gpt-5-codex": {
 			id: "gpt-5-codex",
@@ -219,6 +224,7 @@ export const MODELS = {
 			},
 			contextWindow: 400000,
 			maxTokens: 128000,
+			excludeSettings: ['temperature']
 		} satisfies Model<"openai">,
 		"gpt-5-mini": {
 			id: "gpt-5-mini",
@@ -235,6 +241,7 @@ export const MODELS = {
 			},
 			contextWindow: 400000,
 			maxTokens: 128000,
+			excludeSettings: ['temperature']
 		} satisfies Model<"openai">,
 		"gpt-5.1-codex-max": {
 			id: "gpt-5.1-codex-max",
@@ -251,6 +258,7 @@ export const MODELS = {
 			},
 			contextWindow: 400000,
 			maxTokens: 128000,
+			excludeSettings: ['temperature']
 		} satisfies Model<"openai">,
 		"gpt-5": {
 			id: "gpt-5",
@@ -267,6 +275,7 @@ export const MODELS = {
 			},
 			contextWindow: 400000,
 			maxTokens: 128000,
+			excludeSettings: ['temperature']
 		} satisfies Model<"openai">,
 		"gpt-5-pro": {
 			id: "gpt-5-pro",
@@ -283,6 +292,7 @@ export const MODELS = {
 			},
 			contextWindow: 400000,
 			maxTokens: 272000,
+			excludeSettings: ['temperature']
 		} satisfies Model<"openai">,
 		"gpt-5.1-chat-latest": {
 			id: "gpt-5.1-chat-latest",
@@ -299,6 +309,7 @@ export const MODELS = {
 			},
 			contextWindow: 128000,
 			maxTokens: 16384,
+			excludeSettings: ['temperature']
 		} satisfies Model<"openai">,
 	},
 	// groq: {
