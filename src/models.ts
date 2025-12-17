@@ -31,9 +31,9 @@ export function getModels<TApi extends Api>(
 	return models ? (Array.from(models.values()) as Model<ModelApi<TApi, keyof (typeof MODELS)[TApi]>>[]) : [];
 }
 
-// export function getProviders(): KnownProvider[] {
-// 	return Array.from(modelRegistry.keys()) as KnownProvider[];
-// }
+export function getProviders(): Api[] {
+	return Array.from(modelRegistry.keys()) as Api[];
+}
 
 // export function getModels<TProvider extends KnownProvider>(
 // 	provider: TProvider,

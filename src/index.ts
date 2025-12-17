@@ -60,7 +60,7 @@ export type {
 // Models and Registry
 // ============================================================================
 export { MODELS } from "./models.generated";
-export { calculateCost, getModel, getModels } from "./models";
+export { calculateCost, getModel, getModels, getProviders } from "./models";
 
 // ============================================================================
 // Utilities
