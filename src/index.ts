@@ -67,6 +67,7 @@ export { calculateCost, getModel, getModels, getProviders } from "./models";
 // ============================================================================
 export { defineTool } from "./types";
 export type { ToolName, ToolNames } from "./types";
+export {getOverflowPatterns, isContextOverflow} from './utils/overflow'
 
 // ============================================================================
 // Conversion Utilities
