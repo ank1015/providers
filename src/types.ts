@@ -57,6 +57,7 @@ export interface ToolResultMessage<TDetails = any> {
 export interface CustomMessage {
 	role: "custom";
 	content: Record<string, any>; // Any custom data structure for application-specific metadata
+	timestamp?: number
 }
 
 export interface UserImageContent {
