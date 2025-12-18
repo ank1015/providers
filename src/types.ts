@@ -1,5 +1,8 @@
 import { Response } from "openai/resources/responses/responses.js";
 import type { GenerateContentResponse } from "@google/genai";
+import type { TSchema } from "@sinclair/typebox";
+import { OpenAIProviderOptions } from "./providers/openai";
+import { GoogleProviderOptions } from "./providers/google";
 
 export const KnownApis = ['openai', 'google'] as const;                                                                                                         
 export type Api = typeof KnownApis[number]; 
@@ -18,6 +21,7 @@ export interface Model<TApi extends Api> {
 	};
 	contextWindow: number;
 	maxTokens: number;
+	headers?: Record<string, string>;
 	excludeSettings?: string[]
 }
 
@@ -58,7 +62,7 @@ export interface ToolResultMessage<TDetails = any> {
 	role: "toolResult";
 	id: string;
 	toolName: string;
-	toolCallId?: string;
+	toolCallId: string;
     content: Content; // Supports text, images and files
 	details?: TDetails; // Any extra information not sent to model
 	isError: boolean;
@@ -127,7 +131,34 @@ export interface BaseAssistantMessage <TApi extends Api> {
     getUsage: () => Usage;
 }
 
+export type Message = UserMessage | ToolResultMessage | BaseAssistantMessage<Api>
+
+
 // ################################################################
-//  Provider Options
+//  Provider Functions Types
 // ################################################################
 
+export interface Tool<TParameters extends TSchema = TSchema, TName extends string = string> {
+	name: TName;
+	description: string;
+	parameters: TParameters;
+}
+
+export interface Context {
+	messages: Message[];
+	systemPrompt?: string;
+	tools?: Tool[];
+}
+
+export interface ApiOptionsMap {
+	'openai': OpenAIProviderOptions
+	'google': GoogleProviderOptions
+}
+
+export type OptionsForApi<TApi extends Api> = ApiOptionsMap[TApi]
+
+export type CompleteFunction<TApi extends Api> = (
+	model: Model<TApi>,
+	context: Context,
+	optionsForApi: OptionsForApi<TApi>
+) => Promise<BaseAssistantMessage<TApi>>

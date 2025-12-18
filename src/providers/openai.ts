@@ -1,0 +1,297 @@
+import OpenAI from "openai";
+import { AssistantResponse, Api, BaseAssistantMessage, CompleteFunction, Content, Context, Model, StopReason, Tool, Usage } from "../types.js"
+import type {ResponseCreateParams, Response, ResponseCreateParamsBase, Tool as OpenAITool, ResponseInput, ResponseInputMessageContentList, ResponseFunctionCallOutputItemList, ResponseInputItem, ResponseCreateParamsNonStreaming} from "openai/resources/responses/responses.js";
+import { generateUUID } from "../utils/uuid.js";
+import { sanitizeSurrogates } from "../utils/sanitize-unicode.js";
+import { calculateCost } from "../models.js";
+
+type Props = {
+	apiKey: string;
+	signal: AbortSignal;
+}
+
+export type OpenAIProviderOptions = Omit<ResponseCreateParamsBase, 'model' | 'input' | 'tools'> & Props
+
+export const completeOpenAI:CompleteFunction<'openai'> = async (
+    model: Model<'openai'>,
+    context: Context,
+    options: OpenAIProviderOptions
+) => {
+    const id = generateUUID();
+    const startTimestamp = Date.now();
+    const client = createClient(model, options?.apiKey);
+
+    const params = buildParams(model, context, options);
+
+    const response: Response = await client.responses.create(params, {signal: options?.signal});
+
+    const errorMessage = ''
+
+    const getStopReason = () => {
+        return mapStopReason(response?.status)
+    }
+
+    const getContent = () => {
+        return getResponseAssistantResponse(response)
+    }
+
+    const getUsage = () => {
+        return getResponseUsage(response, model)
+    }
+    
+    return {
+        role: "assistant",
+        message: response,
+        id,
+        model,
+        errorMessage,
+        timestamp: Date.now(),
+        duration: Date.now() - startTimestamp,
+        getStopReason,
+        getContent,
+        getUsage
+    }
+}
+
+function createClient(model: Model<"openai">, apiKey: string) {
+	if (!apiKey) {
+		if (!process.env.OPENAI_API_KEY) {
+			throw new Error(
+				"OpenAI API key is required. Set OPENAI_API_KEY environment variable or pass it as an argument.",
+			);
+		}
+		apiKey = process.env.OPENAI_API_KEY;
+	}
+	return new OpenAI({
+		apiKey,
+		baseURL: model.baseUrl,
+		dangerouslyAllowBrowser: true,
+		defaultHeaders: model.headers,
+	});
+}
+
+function getResponseAssistantResponse(response: Response): AssistantResponse{
+    const assistantResponse: AssistantResponse = [];
+
+    if (response.output) {
+        for (const item of response.output) {
+            if (item.type === 'reasoning' && item.summary) {
+                // Convert reasoning to thinking content
+                const thinkingText = item.summary.map(s => s.text).join('\n\n');
+                assistantResponse.push({
+                    type: 'thinking',
+                    thinkingText: thinkingText
+                });
+            } else if (item.type === 'message' && item.content) {
+                // Convert message to text content
+                // TODO Add image responses
+                const textContent = item.content
+                    .map(c => {
+                        if (c.type === 'output_text') return c.text;
+                        if (c.type === 'refusal') return c.refusal;
+                        return '';
+                    })
+                    .join('');
+
+                if (textContent) {
+                    assistantResponse.push({
+                        type: 'response',
+                        content: [{
+                            type: 'text',
+                            content: textContent
+                        }]
+                    });
+                }
+            } else if (item.type === 'function_call') {
+                // Convert function call to tool call
+                assistantResponse.push({
+                    type: 'toolCall',
+                    toolCallId: item.call_id,
+                    name: item.name,
+                    arguments: JSON.parse(item.arguments || '{}')
+                });
+            }
+        }
+    }
+
+    return assistantResponse
+}
+
+function getResponseUsage(response: Response, model: Model<'openai'>): Usage {
+    const cachedTokens = response.usage?.input_tokens_details?.cached_tokens || 0;
+    const usage: Usage = {
+        input: (response.usage?.input_tokens || 0) - cachedTokens,
+        output: response.usage?.output_tokens || 0,
+        cacheRead: cachedTokens,
+        cacheWrite: 0,
+        totalTokens: response.usage?.total_tokens || 0,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 }
+    };
+    calculateCost(model, usage);
+    return usage;
+}
+
+function buildParams(model: Model<"openai">, context: Context, options: OpenAIProviderOptions){
+	const messages = buildOpenAIMessages(model, context);
+
+	const {apiKey, signal, ...openaiOptions} = options
+	const params: ResponseCreateParamsNonStreaming = {
+		...openaiOptions, 
+        stream: false
+	}
+
+	params.model = model.id;
+	params.input = messages
+
+	if(context.tools){
+		params.tools = convertTools(context.tools)
+	}
+
+	return params;
+}
+
+function buildOpenAIMessages(model: Model<'openai'> ,context: Context): ResponseInput {
+    const openAIMessages: ResponseInput = [];
+    if(context.systemPrompt){
+        openAIMessages.push({
+            role: 'developer',
+            content: sanitizeSurrogates(context.systemPrompt)
+        })
+    };
+
+    for(const message of context.messages){
+
+        if(message.role === 'user'){
+            const contents: ResponseInputMessageContentList = [];
+            for (let p=0; p< message.content.length; p++){
+                const content = message.content[p];
+                if(content.type === 'text'){
+                    contents.push({
+                        type: 'input_text',
+                        text: content.content
+                    })
+                }
+                if(content.type === 'image' && model.input.includes("image")){
+                    contents.push({
+                        type: 'input_image',
+                        detail: 'auto',
+                        image_url: `data:${content.mimeType};base64,${content.data}`
+                    })
+                }
+                if(content.type === 'file'  && model.input.includes("file")){
+                    contents.push({
+                        type: 'input_file',
+                        file_data: `data:${content.mimeType};base64,${content.data}`
+                    })
+                }
+            }
+            openAIMessages.push({
+                role: 'user',
+                content: contents
+            })
+        }
+
+        // normalize for tool results
+        if(message.role === 'toolResult'){
+            const toolOutputs: ResponseFunctionCallOutputItemList = []
+            let hasText = false;
+            let hasImg = false;
+            let hasFile = false;
+            for (let p=0; p< message.content.length; p++){
+                const content = message.content[p];
+                if(content.type === 'text'){
+                    // Prefix error messages so LLM knows the tool failed
+                    const textContent = message.isError
+                        ? `[TOOL ERROR] ${content.content}`
+                        : content.content;
+                    toolOutputs.push({
+                        type: 'input_text',
+                        text: textContent
+                    })
+                    hasText = true;
+                }
+                if(content.type === 'image'  && model.input.includes("image")){
+                    toolOutputs.push({
+                        type: 'input_image',
+                        detail: 'auto',
+                        image_url: `data:${content.mimeType};base64,${content.data}`
+                    })
+                    hasImg = true
+                }
+                if(content.type === 'file'  && model.input.includes("file")){
+                    toolOutputs.push({
+                        type: 'input_file',
+                        file_data: `data:${content.mimeType};base64,${content.data}`
+                    })
+                    hasFile = true
+                }
+            }
+            if(!hasText && (hasImg || hasFile)){
+                toolOutputs.push({
+                    type: 'input_text',
+                    text: message.isError ? '[TOOL ERROR] (see attached)' : '(see attached)'
+                })
+            }
+            const toolResultInput: ResponseInputItem.FunctionCallOutput = {
+                call_id: message.toolCallId,
+                output: toolOutputs,
+                type: 'function_call_output',
+            }
+            openAIMessages.push(toolResultInput)
+        }
+
+        // normalize for Assistant message
+        if(message.role === 'assistant'){
+            if(message.model.api === 'openai'){
+                const baseMessage = message as BaseAssistantMessage<'openai'>
+                for(let p=0; p<baseMessage.message.output.length; p++){
+                    const outputPart = baseMessage.message.output[p];
+                    if(outputPart.type === 'function_call' || outputPart.type === 'message' || outputPart.type === 'reasoning' ){
+                        openAIMessages.push(outputPart);
+                    }
+                }
+            }
+            // TODO Implement other provider conversions
+            else{
+                throw new Error(
+                    `Cannot convert ${message.model.api} assistant message to ${model.api} format. ` +
+                    `Cross-provider conversion for ${message.model.api} → ${model.api} is not yet implemented.`
+                );
+            }
+        }
+
+    }
+
+    return openAIMessages
+}
+
+function convertTools(tools: readonly Tool[]): OpenAITool[] {
+	return tools.map((tool) => ({
+		type: "function",
+		name: tool.name,
+		description: tool.description,
+		parameters: tool.parameters, // TypeBox already generates JSON Schema
+		strict: null,
+	}));
+}
+
+function mapStopReason(status: OpenAI.Responses.ResponseStatus | undefined): StopReason {
+	if (!status) return "stop";
+	switch (status) {
+		case "completed":
+			return "stop";
+		case "incomplete":
+			return "length";
+		case "failed":
+		case "cancelled":
+			return "error";
+		// These two are wonky ...
+		case "in_progress":
+		case "queued":
+			return "stop";
+		default: {
+			const _exhaustive: never = status;
+			throw new Error(`Unhandled stop reason: ${_exhaustive}`);
+		}
+	}
+}
