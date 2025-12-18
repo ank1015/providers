@@ -46,6 +46,7 @@ export interface FileContent {
     type: "file"
 	data: string; // base64 buffer encoded data
 	mimeType: string; // e.g., "application/pdf",
+	filename: string;
 	metadata?: Record<string, any>; // Optional metadata for storage purposes
 }
 

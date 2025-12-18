@@ -84,7 +84,6 @@ function getResponseAssistantResponse(response: Response): AssistantResponse{
                 });
             } else if (item.type === 'message' && item.content) {
                 // Convert message to text content
-                // TODO Add image responses
                 const textContent = item.content
                     .map(c => {
                         if (c.type === 'output_text') return c.text;
@@ -102,7 +101,17 @@ function getResponseAssistantResponse(response: Response): AssistantResponse{
                         }]
                     });
                 }
-            } else if (item.type === 'function_call') {
+            } else if(item.type === 'image_generation_call' && item.result){
+                assistantResponse.push({
+                    type: 'response',
+                    content: [{
+                        type: 'image',
+                        data: item.result,
+                        mimeType: 'image/png'
+                    }]
+                })
+            }
+            else if (item.type === 'function_call') {
                 // Convert function call to tool call
                 assistantResponse.push({
                     type: 'toolCall',
@@ -181,6 +190,7 @@ function buildOpenAIMessages(model: Model<'openai'> ,context: Context): Response
                 if(content.type === 'file'  && model.input.includes("file")){
                     contents.push({
                         type: 'input_file',
+                        filename: content.filename,
                         file_data: `data:${content.mimeType};base64,${content.data}`
                     })
                 }

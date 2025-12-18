@@ -1,7 +1,24 @@
-import { Api, Model, Usage } from "./types";
+import { Api, KnownApis, Model, Usage } from "./types";
+import { MODELS } from "./models.generated";
 
+export function getProviders(): Api[] {
+	return [...KnownApis];
+}
 
+export function getModel<TApi extends Api>(
+	api: TApi,
+	modelId: string,
+): Model<TApi> | undefined {
+	const modelsForApi = MODELS[api as keyof typeof MODELS];
+	if (!modelsForApi) return undefined;
+	return (modelsForApi as any)[modelId] as Model<TApi> | undefined;
+}
 
+export function getModels<TApi extends Api>(api: TApi): Model<TApi>[] {
+	const modelsForApi = MODELS[api as keyof typeof MODELS];
+	if (!modelsForApi) return [];
+	return Object.values(modelsForApi) as Model<TApi>[];
+}
 
 export function calculateCost<TApi extends Api>(model: Model<TApi>, usage: Usage): Usage["cost"] {
 	usage.cost.input = (model.cost.input / 1000000) * usage.input;
