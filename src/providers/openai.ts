@@ -10,7 +10,7 @@ type Props = {
 	signal: AbortSignal;
 }
 
-export type OpenAIProviderOptions = Omit<ResponseCreateParamsBase, 'model' | 'input' | 'tools'> & Props
+export type OpenAIProviderOptions = Omit<ResponseCreateParamsBase, 'model' | 'input'> & Props
 
 export const completeOpenAI:CompleteFunction<'openai'> = async (
     model: Model<'openai'>,
@@ -152,10 +152,22 @@ function buildParams(model: Model<"openai">, context: Context, options: OpenAIPr
 	params.model = model.id;
 	params.input = messages
 
+    const tools: OpenAITool[] = []
+
 	if(context.tools){
-		params.tools = convertTools(context.tools)
+        const convertedTools = convertTools(context.tools)
+        for(const convertedTool of convertedTools){
+            tools.push(convertedTool)
+        }
 	}
 
+    if(openaiOptions.tools){
+        for(const optionTool of openaiOptions.tools){
+            tools.push(optionTool)
+        }
+    }
+
+    params.tools = tools;
 	return params;
 }
 
