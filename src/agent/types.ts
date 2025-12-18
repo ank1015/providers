@@ -9,6 +9,19 @@ export interface AgentToolResult<T> {
 	details: T;
 }
 
+/**
+ * Attachment type definition.
+ * TO make it easy for applications to pass inputs
+ */
+export interface Attachment {
+	id: string;
+	type: "image" | "file";
+	fileName: string;
+	mimeType: string;
+	size?: number;
+	content: string; // base64 encoded (without data URL prefix)
+}
+
 // Callback for streaming tool execution updates
 export type AgentToolUpdateCallback<T = any> = (partialResult: AgentToolResult<T>) => void;
 
@@ -27,6 +40,12 @@ export interface AgentTool<TParameters extends TSchema = TSchema, TDetails = any
 export interface Provider<TApi extends Api> {
     model: Model<TApi>;
     providerOptions: OptionsForApi<TApi>
+}
+
+// Queued message with optional LLM representation
+export interface QueuedMessage<TApp = Message> {
+	original: TApp; // Original message for UI events
+	llm?: Message; // Optional transformed message for loop context (undefined if filtered)
 }
 
 export interface AgentState {

@@ -9,8 +9,8 @@ import type { TSchema } from "@sinclair/typebox";
 
 
 type Props = {
-	apiKey: string;
-	signal: AbortSignal;
+	apiKey?: string;
+	signal?: AbortSignal;
 }
 
 export type GoogleProviderOptions = Omit<GenerateContentConfig, 'abortSignal' | 'systemPrompt'> & Props

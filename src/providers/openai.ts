@@ -6,8 +6,8 @@ import { sanitizeSurrogates } from "../utils/sanitize-unicode.js";
 import { calculateCost } from "../models.js";
 
 type Props = {
-	apiKey: string;
-	signal: AbortSignal;
+	apiKey?: string;
+	signal?: AbortSignal;
 }
 
 export type OpenAIProviderOptions = Omit<ResponseCreateParamsBase, 'model' | 'input'> & Props
@@ -88,7 +88,7 @@ export const completeOpenAI:CompleteFunction<'openai'> = async (
     }
 }
 
-function createClient(model: Model<"openai">, apiKey: string) {
+function createClient(model: Model<"openai">, apiKey?: string) {
 	if (!apiKey) {
 		if (!process.env.OPENAI_API_KEY) {
 			throw new Error(
