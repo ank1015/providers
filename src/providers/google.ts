@@ -5,6 +5,7 @@ import { sanitizeSurrogates } from "../utils/sanitize-unicode";
 import { ContentListUnion, Part, GenerateContentResponse, FinishReason } from "@google/genai";
 import { calculateCost } from "../models";
 import { ToolListUnion } from "@google/genai";
+import type { TSchema } from "@sinclair/typebox";
 
 
 type Props = {
@@ -24,43 +25,70 @@ export const completeGoogle:CompleteFunction<'google'> = async (
     const startTimestamp = Date.now();
 
     const client = createClient(model, options?.apiKey);
-
     const params = buildParams(model, context, options);
 
-    const response = await client.models.generateContent(params);
+    try{
+        const response = await client.models.generateContent(params);
 
+        // Cache processed content to ensure stable tool call IDs
+        const content = getResponseAssistantResponse(response);
+        const usage = getResponseUsage(response, model);
+        const stopReason = getAssistantStopReason(response);
+    
+        const getStopReason = () => {
+            return stopReason
+        }
+    
+        const getContent = () => {
+            return content
+        }
+    
+        const getUsage = () => {
+            return usage
+        }
+    
+        return {
+            role: "assistant",
+            message: response,
+            id,
+            model,
+            timestamp: Date.now(),
+            duration: Date.now() - startTimestamp,
+            getStopReason,
+            getContent,
+            getUsage
+        }
+    } catch (error){
+        const errorMessage = error instanceof Error ? error.message : String(error);
 
-    const errorMessage = ''
+        // Return error response with empty content and zero usage
+        const emptyUsage: Usage = {
+            input: 0,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 0,
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 }
+        };
 
-    // Cache processed content to ensure stable tool call IDs
-    const content = getResponseAssistantResponse(response);
-    const usage = getResponseUsage(response, model);
-    const stopReason = getAssistantStopReason(response);
+        const getStopReason = () => "error" as StopReason;
+        const getContent = () => [] as AssistantResponse;
+        const getUsage = () => emptyUsage;
 
-    const getStopReason = () => {
-        return stopReason
+        return {
+            role: "assistant",
+            message: {} as GenerateContentResponse, // Empty response object for error case
+            id,
+            model,
+            errorMessage,
+            timestamp: Date.now(),
+            duration: Date.now() - startTimestamp,
+            getStopReason,
+            getContent,
+            getUsage
+        };
     }
 
-    const getContent = () => {
-        return content
-    }
-
-    const getUsage = () => {
-        return usage
-    }
-
-    return {
-        role: "assistant",
-        message: response,
-        id,
-        model,
-        errorMessage,
-        timestamp: Date.now(),
-        duration: Date.now() - startTimestamp,
-        getStopReason,
-        getContent,
-        getUsage
-    }
 }
 
 function createClient(model: Model<"google">, apiKey?: string): GoogleGenAI {
@@ -111,7 +139,7 @@ function getResponseAssistantResponse(response: GenerateContentResponse): Assist
                                 content: [{
                                     type: 'image',
                                     data: imageData,
-                                    mimeType: 'image/png'
+                                    mimeType: part.inlineData.mimeType || 'image/png'
                                 }]
                             })
                         }
@@ -228,7 +256,7 @@ function buildGoogleMessages(model: Model<'google'> ,context: Context): ContentL
                 const messageContent = message.content[p];
                 if(messageContent.type === 'text'){
                     parts.push({
-                        text: messageContent.content
+                        text: sanitizeSurrogates(messageContent.content)
                     })
                 }
                 if(messageContent.type === 'image' && model.input.includes("image")){
@@ -288,7 +316,7 @@ function buildGoogleMessages(model: Model<'google'> ,context: Context): ContentL
                             name: message.toolName,
                             parts,
                             response: {
-                                result: textRes,
+                                result: sanitizeSurrogates(textRes),
                                 isError: message.isError
                             }
                         }
@@ -322,13 +350,19 @@ function buildGoogleMessages(model: Model<'google'> ,context: Context): ContentL
 }
 
 /**
+ * JSON Schema type that can be primitives, objects, or arrays
+ * Covers the recursive nature of JSON Schema structures
+ */
+type JSONSchemaValue = TSchema | { [key: string]: JSONSchemaValue } | JSONSchemaValue[] | string | number | boolean | null;
+
+/**
  * Transforms a JSON Schema to Google's supported subset.
  * Main transformations:
  * - Converts { "const": "value" } to { "enum": ["value"] }
  * - Converts { "anyOf": [{ "const": "a" }, { "const": "b" }] } to { "enum": ["a", "b"] }
  * - Recursively processes nested objects and arrays
  */
-export function transformSchemaForGoogle(schema: any): any {
+export function transformSchemaForGoogle(schema: JSONSchemaValue): JSONSchemaValue {
 	if (!schema || typeof schema !== 'object') {
 		return schema;
 	}
@@ -338,7 +372,7 @@ export function transformSchemaForGoogle(schema: any): any {
 		return schema.map(transformSchemaForGoogle);
 	}
 
-	const transformed: any = {};
+	const transformed: Record<string, JSONSchemaValue> = {};
 
 	// Handle const keyword - convert to enum
 	if ('const' in schema) {

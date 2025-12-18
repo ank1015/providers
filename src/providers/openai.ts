@@ -20,41 +20,69 @@ export const completeOpenAI:CompleteFunction<'openai'> = async (
     const id = generateUUID();
     const startTimestamp = Date.now();
     const client = createClient(model, options?.apiKey);
-
     const params = buildParams(model, context, options);
 
-    const response: Response = await client.responses.create(params, {signal: options?.signal});
+    try{
+        const response: Response = await client.responses.create(params, {signal: options?.signal});
 
-    const errorMessage = ''
-
-    // Cache processed content for performance and consistency
-    const content = getResponseAssistantResponse(response);
-    const usage = getResponseUsage(response, model);
-    const stopReason = mapStopReason(response?.status);
-
-    const getStopReason = () => {
-        return stopReason
-    }
-
-    const getContent = () => {
-        return content
-    }
-
-    const getUsage = () => {
-        return usage
-    }
     
-    return {
-        role: "assistant",
-        message: response,
-        id,
-        model,
-        errorMessage,
-        timestamp: Date.now(),
-        duration: Date.now() - startTimestamp,
-        getStopReason,
-        getContent,
-        getUsage
+        // Cache processed content for performance and consistency
+        const content = getResponseAssistantResponse(response);
+        const usage = getResponseUsage(response, model);
+        const stopReason = mapStopReason(response?.status);
+    
+        const getStopReason = () => {
+            return stopReason
+        }
+    
+        const getContent = () => {
+            return content
+        }
+    
+        const getUsage = () => {
+            return usage
+        }
+        
+        return {
+            role: "assistant",
+            message: response,
+            id,
+            model,
+            timestamp: Date.now(),
+            duration: Date.now() - startTimestamp,
+            getStopReason,
+            getContent,
+            getUsage
+        }
+    } catch (error){
+        const errorMessage = error instanceof Error ? error.message : String(error);
+
+        // Return error response with empty content and zero usage
+        const emptyUsage: Usage = {
+            input: 0,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 0,
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 }
+        };
+
+        const getStopReason = () => "error" as StopReason;
+        const getContent = () => [] as AssistantResponse;
+        const getUsage = () => emptyUsage;
+
+        return {
+            role: "assistant",
+            message: {} as Response, // Empty response object for error case
+            id,
+            model,
+            errorMessage,
+            timestamp: Date.now(),
+            duration: Date.now() - startTimestamp,
+            getStopReason,
+            getContent,
+            getUsage
+        };
     }
 }
 
@@ -194,7 +222,7 @@ function buildOpenAIMessages(model: Model<'openai'> ,context: Context): Response
                 if(content.type === 'text'){
                     contents.push({
                         type: 'input_text',
-                        text: content.content
+                        text: sanitizeSurrogates(content.content)
                     })
                 }
                 if(content.type === 'image' && model.input.includes("image")){
@@ -233,7 +261,7 @@ function buildOpenAIMessages(model: Model<'openai'> ,context: Context): Response
                         : content.content;
                     toolOutputs.push({
                         type: 'input_text',
-                        text: textContent
+                        text: sanitizeSurrogates(textContent)
                     })
                     hasText = true;
                 }

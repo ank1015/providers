@@ -16,7 +16,9 @@ export function getModel<TApi extends Api>(
 ): Model<TApi> | undefined {
 	const modelsForApi = MODELS[api as keyof typeof MODELS];
 	if (!modelsForApi) return undefined;
-	return (modelsForApi as any)[modelId] as Model<TApi> | undefined;
+
+	// Safe cast: ModelIdsForApi<TApi> guarantees modelId is a valid key for this API's models
+	return modelsForApi[modelId as keyof typeof modelsForApi] as Model<TApi> | undefined;
 }
 
 export function getModels<TApi extends Api>(api: TApi): Model<TApi>[] {
