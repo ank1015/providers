@@ -159,7 +159,7 @@ function buildParams(model: Model<"openai">, context: Context, options: OpenAIPr
 
     const tools: OpenAITool[] = []
 
-	if(context.tools){
+	if(context.tools && model.tools.includes('function_calling')){
         const convertedTools = convertTools(context.tools)
         for(const convertedTool of convertedTools){
             tools.push(convertedTool)

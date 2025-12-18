@@ -4,6 +4,7 @@ import { generateUUID } from "../utils/uuid"
 import { sanitizeSurrogates } from "../utils/sanitize-unicode";
 import { ContentListUnion, Part, GenerateContentResponse, FinishReason } from "@google/genai";
 import { calculateCost } from "../models";
+import { ToolListUnion } from "@google/genai";
 
 
 type Props = {
@@ -11,7 +12,7 @@ type Props = {
 	signal: AbortSignal;
 }
 
-export type GoogleProviderOptions = Omit<GenerateContentConfig, 'abortSignal' | 'tools' | 'systemPrompt'> & Props
+export type GoogleProviderOptions = Omit<GenerateContentConfig, 'abortSignal' | 'systemPrompt'> & Props
 
 export const completeGoogle:CompleteFunction<'google'> = async (
     model: Model<'google'>,
@@ -102,6 +103,20 @@ function getResponseAssistantResponse(response: GenerateContentResponse): Assist
                         }
                     }
 
+                    if(part.inlineData){
+                        const imageData = part.inlineData.data;
+                        if(imageData){
+                            assistantResponse.push({
+                                type: 'response',
+                                content: [{
+                                    type: 'image',
+                                    data: imageData,
+                                    mimeType: 'image/png'
+                                }]
+                            })
+                        }
+                    }
+
                     // Handle function calls
                     if (part.functionCall) {
                         const toolCallId = part.functionCall.id ||
@@ -175,9 +190,22 @@ function buildParams(model: Model<"google">, context: Context, options: GooglePr
         config.systemInstruction = sanitizeSurrogates(context.systemPrompt);
     }
 
-    if(context.tools){
-        config.tools = convertTools(context.tools)
+    const tools: ToolListUnion = []
+
+    if(context.tools && model.tools.includes('function_calling')){
+        const convertedTools = convertTools(context.tools);
+        for (const convertedTool of convertedTools){
+            tools.push(convertedTool);
+        }
     }
+
+    if(googleOptions.tools){
+        for (const optionTool of googleOptions.tools){
+            tools.push(optionTool)
+        }
+    }
+
+    if(tools.length > 0) config.tools = tools;
 
 	const params: GenerateContentParameters = {
         model: model.id,
@@ -374,8 +402,7 @@ export function transformSchemaForGoogle(schema: any): any {
 	return transformed;
 }
 
-function convertTools(tools: readonly Tool[]): any[] | undefined {
-	if (tools.length === 0) return undefined;
+function convertTools(tools: readonly Tool[]): any[] {
 	return [
 		{
 			functionDeclarations: tools.map((tool) => ({

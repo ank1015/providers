@@ -1,13 +1,18 @@
 import { Api, KnownApis, Model, Usage } from "./types";
 import { MODELS } from "./models.generated";
 
+// Extract valid model IDs for a specific API
+type ModelIdsForApi<TApi extends Api> = TApi extends keyof typeof MODELS
+	? keyof (typeof MODELS)[TApi]
+	: never;
+
 export function getProviders(): Api[] {
 	return [...KnownApis];
 }
 
 export function getModel<TApi extends Api>(
 	api: TApi,
-	modelId: string,
+	modelId: ModelIdsForApi<TApi>,
 ): Model<TApi> | undefined {
 	const modelsForApi = MODELS[api as keyof typeof MODELS];
 	if (!modelsForApi) return undefined;
