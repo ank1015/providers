@@ -47,6 +47,7 @@ export const completeOpenAI:CompleteFunction<'openai'> = async (
             role: "assistant",
             message: response,
             id,
+            api: model.api,
             model,
             timestamp: Date.now(),
             duration: Date.now() - startTimestamp,
@@ -75,6 +76,7 @@ export const completeOpenAI:CompleteFunction<'openai'> = async (
             role: "assistant",
             message: {} as Response, // Empty response object for error case
             id,
+            api: model.api,
             model,
             errorMessage,
             timestamp: Date.now(),

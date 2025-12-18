@@ -52,6 +52,7 @@ export const completeGoogle:CompleteFunction<'google'> = async (
             message: response,
             id,
             model,
+            api: model.api,
             timestamp: Date.now(),
             duration: Date.now() - startTimestamp,
             getStopReason,
@@ -80,6 +81,7 @@ export const completeGoogle:CompleteFunction<'google'> = async (
             message: {} as GenerateContentResponse, // Empty response object for error case
             id,
             model,
+            api: model.api,
             errorMessage,
             timestamp: Date.now(),
             duration: Date.now() - startTimestamp,

@@ -123,6 +123,7 @@ export type NativeAssistantMessageForApi<TApi extends Api> = ApiNativeAssistantM
 export interface BaseAssistantMessage <TApi extends Api> {
     role: "assistant";
     message: NativeAssistantMessageForApi<TApi>
+	api: string;
     id: string;
     model: Model<TApi>;
     errorMessage?: string;
@@ -133,7 +134,14 @@ export interface BaseAssistantMessage <TApi extends Api> {
     getUsage: () => Usage;
 }
 
-export type Message = UserMessage | ToolResultMessage | BaseAssistantMessage<Api>
+export interface CustomMessage {
+	role: "custom";
+	id: string;
+	content: Record<string, any>; // Any custom data structure for application-specific metadata
+	timestamp?: number
+}
+
+export type Message = UserMessage | ToolResultMessage | BaseAssistantMessage<Api> | CustomMessage
 
 
 // ################################################################
