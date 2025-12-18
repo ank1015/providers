@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { AssistantResponse, Api, BaseAssistantMessage, CompleteFunction, Content, Context, Model, StopReason, Tool, Usage } from "../types.js"
+import { AssistantResponse, BaseAssistantMessage, CompleteFunction, Content, Context, Model, StopReason, Tool, Usage } from "../types.js"
 import type {ResponseCreateParams, Response, ResponseCreateParamsBase, Tool as OpenAITool, ResponseInput, ResponseInputMessageContentList, ResponseFunctionCallOutputItemList, ResponseInputItem, ResponseCreateParamsNonStreaming} from "openai/resources/responses/responses.js";
 import { generateUUID } from "../utils/uuid.js";
 import { sanitizeSurrogates } from "../utils/sanitize-unicode.js";
@@ -27,16 +27,21 @@ export const completeOpenAI:CompleteFunction<'openai'> = async (
 
     const errorMessage = ''
 
+    // Cache processed content for performance and consistency
+    const content = getResponseAssistantResponse(response);
+    const usage = getResponseUsage(response, model);
+    const stopReason = mapStopReason(response?.status);
+
     const getStopReason = () => {
-        return mapStopReason(response?.status)
+        return stopReason
     }
 
     const getContent = () => {
-        return getResponseAssistantResponse(response)
+        return content
     }
 
     const getUsage = () => {
-        return getResponseUsage(response, model)
+        return usage
     }
     
     return {
