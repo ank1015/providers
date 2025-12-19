@@ -1,5 +1,5 @@
-import { Api, KnownApis, Model, Usage } from "./types";
-import { MODELS } from "./models.generated";
+import { Api, KnownApis, Model, Usage } from "./types.js";
+import { MODELS } from "./models.generated.js";
 
 // Extract valid model IDs for a specific API
 type ModelIdsForApi<TApi extends Api> = TApi extends keyof typeof MODELS

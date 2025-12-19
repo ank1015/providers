@@ -1,7 +1,7 @@
 import { completeGoogle, GoogleProviderOptions } from "./providers/google";
 import { completeOpenAI, OpenAIProviderOptions } from "./providers/openai";
-import { Model, Api, Context, OptionsForApi, BaseAssistantMessage } from "./types";
-import { generateUUID } from "./utils/uuid";
+import { Model, Api, Context, OptionsForApi, BaseAssistantMessage } from "./types.js";
+import { generateUUID } from "./utils/uuid.js";
 
 const envMap: Record<Api, string> = {
 	openai: "OPENAI_API_KEY",

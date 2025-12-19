@@ -1,9 +1,9 @@
-import { getModel } from "../models";
-import { Api, AssistantResponse, Content, CustomMessage, Message, ToolResultMessage, UserMessage } from "../types";
-import { AgentEvent, AgentLoopConfig, AgentState, AgentTool, AgentToolResult, Attachment, Provider, QueuedMessage } from "./types";
-import { generateUUID } from "../utils/uuid";
-import { complete } from "../complete";
-import { validateToolArguments } from "../utils/validation";
+import { getModel } from "../models.js";
+import { Api, AssistantResponse, Content, CustomMessage, Message, ToolResultMessage, UserMessage } from "../types.js";
+import { AgentEvent, AgentLoopConfig, AgentState, AgentTool, AgentToolResult, Attachment, Provider, QueuedMessage } from "./types.js";
+import { generateUUID } from "../utils/uuid.js";
+import { complete } from "../complete.js";
+import { validateToolArguments } from "../utils/validation.js";
 
 export interface AgentOptions {
     initialState?: Partial<AgentState>;
@@ -274,9 +274,10 @@ export class Conversation {
 				}
 			}
 		}
+		const userMessageId = generateUUID()
 		const userMessage: UserMessage = {
 			role: 'user',
-			id: generateUUID(),
+			id: userMessageId,
 			timestamp: Date.now(),
 			content
 		};
@@ -574,7 +575,4 @@ export class Conversation {
 		}
 		return results;
 	}
-
-
-
 }

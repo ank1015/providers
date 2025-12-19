@@ -1,4 +1,4 @@
-import { Api, Content, Message, Model, OptionsForApi, Tool, ToolResultMessage,  } from "../types";
+import { Api, Content, Message, Model, OptionsForApi, Tool, ToolResultMessage,  } from "../types.js";
 import type { Static, TSchema } from "@sinclair/typebox";
 
 

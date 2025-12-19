@@ -1,80 +1,11 @@
 import OpenAI from "openai";
-import { AssistantResponse, BaseAssistantMessage, CompleteFunction, Content, Context, Model, StopReason, Tool, Usage } from "../types.js"
-import type {ResponseCreateParams, Response, ResponseCreateParamsBase, Tool as OpenAITool, ResponseInput, ResponseInputMessageContentList, ResponseFunctionCallOutputItemList, ResponseInputItem, ResponseCreateParamsNonStreaming} from "openai/resources/responses/responses.js";
-import { generateUUID } from "../utils/uuid.js";
-import { sanitizeSurrogates } from "../utils/sanitize-unicode.js";
-import { calculateCost } from "../models.js";
+import { AssistantResponse, BaseAssistantMessage, Context, Model, StopReason, Tool, Usage } from "../../types.js"
+import type {Response, Tool as OpenAITool, ResponseInput, ResponseInputMessageContentList, ResponseFunctionCallOutputItemList, ResponseInputItem, ResponseCreateParamsNonStreaming} from "openai/resources/responses/responses.js";
+import { sanitizeSurrogates } from "../../utils/sanitize-unicode.js";
+import { calculateCost } from "../../models.js";
+import { OpenAIProviderOptions } from "./types.js";
 
-type Props = {
-	apiKey?: string;
-	signal?: AbortSignal;
-}
-
-export type OpenAIProviderOptions = Omit<ResponseCreateParamsBase, 'model' | 'input'> & Props
-
-export const completeOpenAI:CompleteFunction<'openai'> = async (
-    model: Model<'openai'>,
-    context: Context,
-    options: OpenAIProviderOptions,
-    id: string
-) => {
-    const startTimestamp = Date.now();
-    const client = createClient(model, options?.apiKey);
-    const params = buildParams(model, context, options);
-
-    try{
-        const response: Response = await client.responses.create(params, {signal: options?.signal});
-
-    
-        // Cache processed content for performance and consistency
-        const content = getResponseAssistantResponse(response);
-        const usage = getResponseUsage(response, model);
-        const stopReason = mapStopReason(response?.status);
-        
-        return {
-            role: "assistant",
-            message: response,
-            id,
-            api: model.api,
-            model,
-            timestamp: Date.now(),
-            duration: Date.now() - startTimestamp,
-            stopReason,
-            content,
-            usage
-        }
-    } catch (error){
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        const isAborted = options.signal?.aborted
-        const stopReason: StopReason = isAborted ? "aborted" : "error"
-
-        // Return error response with empty content and zero usage
-        const emptyUsage: Usage = {
-            input: 0,
-            output: 0,
-            cacheRead: 0,
-            cacheWrite: 0,
-            totalTokens: 0,
-            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 }
-        };
-
-        return {
-            role: "assistant",
-            message: {} as Response, // Empty response object for error case
-            id,
-            api: model.api,
-            model,
-            errorMessage,
-            timestamp: Date.now(),
-            duration: Date.now() - startTimestamp,
-            stopReason,
-            content: [],
-            usage: emptyUsage
-        };
-    }
-}
-
-function createClient(model: Model<"openai">, apiKey?: string) {
+export function createClient(model: Model<"openai">, apiKey?: string) {
 	if (!apiKey) {
 		if (!process.env.OPENAI_API_KEY) {
 			throw new Error(
@@ -91,7 +22,7 @@ function createClient(model: Model<"openai">, apiKey?: string) {
 	});
 }
 
-function getResponseAssistantResponse(response: Response): AssistantResponse{
+export function getResponseAssistantResponse(response: Response): AssistantResponse{
     const assistantResponse: AssistantResponse = [];
 
     if (response.output) {
@@ -147,7 +78,7 @@ function getResponseAssistantResponse(response: Response): AssistantResponse{
     return assistantResponse
 }
 
-function getResponseUsage(response: Response, model: Model<'openai'>): Usage {
+export function getResponseUsage(response: Response, model: Model<'openai'>): Usage {
     const cachedTokens = response.usage?.input_tokens_details?.cached_tokens || 0;
     const usage: Usage = {
         input: (response.usage?.input_tokens || 0) - cachedTokens,
@@ -161,7 +92,7 @@ function getResponseUsage(response: Response, model: Model<'openai'>): Usage {
     return usage;
 }
 
-function buildParams(model: Model<"openai">, context: Context, options: OpenAIProviderOptions){
+export function buildParams(model: Model<"openai">, context: Context, options: OpenAIProviderOptions){
 	const messages = buildOpenAIMessages(model, context);
 
 	const {apiKey, signal, ...openaiOptions} = options
@@ -192,7 +123,7 @@ function buildParams(model: Model<"openai">, context: Context, options: OpenAIPr
 	return params;
 }
 
-function buildOpenAIMessages(model: Model<'openai'> ,context: Context): ResponseInput {
+export function buildOpenAIMessages(model: Model<'openai'> ,context: Context): ResponseInput {
     const openAIMessages: ResponseInput = [];
     if(context.systemPrompt){
         openAIMessages.push({
@@ -308,7 +239,7 @@ function buildOpenAIMessages(model: Model<'openai'> ,context: Context): Response
     return openAIMessages
 }
 
-function convertTools(tools: readonly Tool[]): OpenAITool[] {
+export function convertTools(tools: readonly Tool[]): OpenAITool[] {
 	return tools.map((tool) => ({
 		type: "function",
 		name: tool.name,
@@ -318,7 +249,7 @@ function convertTools(tools: readonly Tool[]): OpenAITool[] {
 	}));
 }
 
-function mapStopReason(status: OpenAI.Responses.ResponseStatus | undefined): StopReason {
+export function mapStopReason(status: OpenAI.Responses.ResponseStatus | undefined): StopReason {
 	if (!status) return "stop";
 	switch (status) {
 		case "completed":

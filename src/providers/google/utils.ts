@@ -1,85 +1,12 @@
-import { GenerateContentConfig, GenerateContentParameters, GoogleGenAI } from "@google/genai"
-import { AssistantResponse, BaseAssistantMessage, CompleteFunction, Context, Model, StopReason, Tool, Usage } from "../types"
-import { generateUUID } from "../utils/uuid"
-import { sanitizeSurrogates } from "../utils/sanitize-unicode";
-import { ContentListUnion, Part, GenerateContentResponse, FinishReason } from "@google/genai";
-import { calculateCost } from "../models";
-import { ToolListUnion } from "@google/genai";
+import { Model, AssistantResponse, StopReason, Usage, Context, BaseAssistantMessage, Tool } from "../../types.js";
+import { GenerateContentConfig, GenerateContentResponse, GoogleGenAI, FinishReason, GenerateContentParameters, ToolListUnion, ContentListUnion, Part } from "@google/genai";
+import { calculateCost } from "../../models.js";
+import { GoogleProviderOptions } from "./types.js";
+import { sanitizeSurrogates } from "../../utils/sanitize-unicode.js";
 import type { TSchema } from "@sinclair/typebox";
 
 
-type Props = {
-	apiKey?: string;
-	signal?: AbortSignal;
-}
-
-export type GoogleProviderOptions = Omit<GenerateContentConfig, 'abortSignal' | 'systemPrompt'> & Props
-
-export const completeGoogle:CompleteFunction<'google'> = async (
-    model: Model<'google'>,
-    context: Context,
-    options: GoogleProviderOptions,
-    id: string
-) => {
-
-    const startTimestamp = Date.now();
-
-    const client = createClient(model, options?.apiKey);
-    const params = buildParams(model, context, options);
-
-    try{
-        const response = await client.models.generateContent(params);
-
-        // Cache processed content to ensure stable tool call IDs
-        const content = getResponseAssistantResponse(response);
-        const usage = getResponseUsage(response, model);
-        const stopReason = getAssistantStopReason(response);
-    
-        return {
-            role: "assistant",
-            message: response,
-            id,
-            model,
-            api: model.api,
-            timestamp: Date.now(),
-            duration: Date.now() - startTimestamp,
-            stopReason,
-            content,
-            usage
-        }
-    } catch (error){
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        const isAborted = options.signal?.aborted
-        const stopReason: StopReason = isAborted ? "aborted" : "error"
-
-        // Return error response with empty content and zero usage
-        const emptyUsage: Usage = {
-            input: 0,
-            output: 0,
-            cacheRead: 0,
-            cacheWrite: 0,
-            totalTokens: 0,
-            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 }
-        };
-
-        return {
-            role: "assistant",
-            message: {} as GenerateContentResponse, // Empty response object for error case
-            id,
-            model,
-            api: model.api,
-            errorMessage,
-            timestamp: Date.now(),
-            duration: Date.now() - startTimestamp,
-            stopReason,
-            content: [],
-            usage: emptyUsage
-        };
-    }
-
-}
-
-function createClient(model: Model<"google">, apiKey?: string): GoogleGenAI {
+export function createClient(model: Model<"google">, apiKey?: string): GoogleGenAI {
 	if (!apiKey) {
 		if (!process.env.GEMINI_API_KEY) {
 			throw new Error(
@@ -94,7 +21,7 @@ function createClient(model: Model<"google">, apiKey?: string): GoogleGenAI {
 	});
 }
 
-function getResponseAssistantResponse(response: GenerateContentResponse): AssistantResponse{
+export function getResponseAssistantResponse(response: GenerateContentResponse): AssistantResponse{
     const assistantResponse: AssistantResponse = [];
 
     // Process candidates
@@ -153,7 +80,7 @@ function getResponseAssistantResponse(response: GenerateContentResponse): Assist
     return assistantResponse
 }
 
-function getAssistantStopReason(response: GenerateContentResponse): StopReason{
+export function getAssistantStopReason(response: GenerateContentResponse): StopReason{
 
     let finishReason: FinishReason | undefined;
 
@@ -173,7 +100,7 @@ function getAssistantStopReason(response: GenerateContentResponse): StopReason{
     return stopReason;
 }
 
-function getResponseUsage(response: GenerateContentResponse, model: Model<'google'>): Usage{
+export function getResponseUsage(response: GenerateContentResponse, model: Model<'google'>): Usage{
     // Extract usage information
     const usage: Usage = {
         input: response.usageMetadata?.promptTokenCount || 0,
@@ -188,7 +115,7 @@ function getResponseUsage(response: GenerateContentResponse, model: Model<'googl
     return usage;
 }
 
-function buildParams(model: Model<"google">, context: Context, options: GoogleProviderOptions){
+export function buildParams(model: Model<"google">, context: Context, options: GoogleProviderOptions){
 
     const contents = buildGoogleMessages(model, context);
 
@@ -232,7 +159,7 @@ function buildParams(model: Model<"google">, context: Context, options: GooglePr
     return params;
 }
 
-function buildGoogleMessages(model: Model<'google'> ,context: Context): ContentListUnion{
+export function buildGoogleMessages(model: Model<'google'> ,context: Context): ContentListUnion{
     const contents: ContentListUnion = []
 
     for (let i=0; i< context.messages.length; i++){
@@ -424,7 +351,7 @@ export function transformSchemaForGoogle(schema: JSONSchemaValue): JSONSchemaVal
 	return transformed;
 }
 
-function convertTools(tools: readonly Tool[]): any[] {
+export function convertTools(tools: readonly Tool[]): any[] {
 	return [
 		{
 			functionDeclarations: tools.map((tool) => ({
@@ -436,7 +363,7 @@ function convertTools(tools: readonly Tool[]): any[] {
 	];
 }
 
-function mapStopReason(reason: FinishReason): StopReason {
+export function mapStopReason(reason: FinishReason): StopReason {
 	switch (reason) {
 		case FinishReason.STOP:
 			return "stop";
