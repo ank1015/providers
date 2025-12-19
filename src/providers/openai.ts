@@ -15,9 +15,9 @@ export type OpenAIProviderOptions = Omit<ResponseCreateParamsBase, 'model' | 'in
 export const completeOpenAI:CompleteFunction<'openai'> = async (
     model: Model<'openai'>,
     context: Context,
-    options: OpenAIProviderOptions
+    options: OpenAIProviderOptions,
+    id: string
 ) => {
-    const id = generateUUID();
     const startTimestamp = Date.now();
     const client = createClient(model, options?.apiKey);
     const params = buildParams(model, context, options);
@@ -57,6 +57,8 @@ export const completeOpenAI:CompleteFunction<'openai'> = async (
         }
     } catch (error){
         const errorMessage = error instanceof Error ? error.message : String(error);
+        const isAborted = options.signal?.aborted
+        const stopReason: StopReason = isAborted ? "aborted" : "error"
 
         // Return error response with empty content and zero usage
         const emptyUsage: Usage = {
@@ -68,7 +70,7 @@ export const completeOpenAI:CompleteFunction<'openai'> = async (
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 }
         };
 
-        const getStopReason = () => "error" as StopReason;
+        const getStopReason = () => stopReason;
         const getContent = () => [] as AssistantResponse;
         const getUsage = () => emptyUsage;
 

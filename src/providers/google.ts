@@ -18,10 +18,10 @@ export type GoogleProviderOptions = Omit<GenerateContentConfig, 'abortSignal' | 
 export const completeGoogle:CompleteFunction<'google'> = async (
     model: Model<'google'>,
     context: Context,
-    options: GoogleProviderOptions
+    options: GoogleProviderOptions,
+    id: string
 ) => {
 
-    const id = generateUUID();
     const startTimestamp = Date.now();
 
     const client = createClient(model, options?.apiKey);
@@ -61,6 +61,8 @@ export const completeGoogle:CompleteFunction<'google'> = async (
         }
     } catch (error){
         const errorMessage = error instanceof Error ? error.message : String(error);
+        const isAborted = options.signal?.aborted
+        const stopReason: StopReason = isAborted ? "aborted" : "error"
 
         // Return error response with empty content and zero usage
         const emptyUsage: Usage = {
@@ -72,7 +74,7 @@ export const completeGoogle:CompleteFunction<'google'> = async (
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 }
         };
 
-        const getStopReason = () => "error" as StopReason;
+        const getStopReason = () => stopReason;
         const getContent = () => [] as AssistantResponse;
         const getUsage = () => emptyUsage;
 

@@ -170,5 +170,6 @@ export type OptionsForApi<TApi extends Api> = ApiOptionsMap[TApi]
 export type CompleteFunction<TApi extends Api> = (
 	model: Model<TApi>,
 	context: Context,
-	optionsForApi: OptionsForApi<TApi>
+	optionsForApi: OptionsForApi<TApi>,
+	id: string
 ) => Promise<BaseAssistantMessage<TApi>>

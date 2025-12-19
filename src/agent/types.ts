@@ -58,6 +58,13 @@ export interface AgentState {
 	error?: string;
 }
 
+export interface AgentLoopConfig {
+	systemPrompt?: string;
+	tools: AgentTool[];
+	provider: Provider<Api>;
+	getQueuedMessages: <T>() => Promise<QueuedMessage<T>[]>
+}
+
 // Event types
 // Events are emitted due to execution. They don't affect execution.
 // Events are for live updates to application. They should contain same information as the store messages array.
@@ -68,11 +75,11 @@ export type AgentEvent =
 	// Emitted when a turn starts. A turn can emit an optional user message (initial prompt), an assistant message (response) and multiple tool result messages
 	| { type: "turn_start" }
 	// Emitted when a user, assistant or tool result message starts
-	| { type: "message_start", messageType: 'user' | 'assistant' | 'tool' | 'custom', messageId: string }
+	| { type: "message_start", messageType: 'user' | 'assistant' | 'toolResult' | 'custom', messageId: string }
 	// Emitted when a user, assistant or tool result message starts
-	| { type: "message_update", messageType: 'user' | 'assistant' | 'tool' | 'custom', messageId: string, message: Message }
+	| { type: "message_update", messageType: 'user' | 'assistant' | 'toolResult' | 'custom', messageId: string, message: Message }
 	// Emitted when a user, assistant or tool result message starts
-	| { type: "message_end", messageType: 'user' | 'assistant' | 'tool' | 'custom', messageId: string, message: Message }
+	| { type: "message_end", messageType: 'user' | 'assistant' | 'toolResult' | 'custom', messageId: string, message: Message }
 	// Emitted when a tool execution starts
 	| { type: "tool_execution_start"; toolCallId: string; toolName: string; args: any }
 	// Emitted when a tool execution produces output (streaming)
@@ -92,7 +99,7 @@ export type AgentEvent =
         isError: boolean;
       }
 	// Emitted when a full turn completes
-	| { type: "turn_end", turnMessages: Message[]}
+	| { type: "turn_end"}
 	// Emitted when the agent has completed all its turns. All messages from every turn are
 	// contained in messages, which can be appended to the context
 	| { type: "agent_end", agentMessages: Message[]};
