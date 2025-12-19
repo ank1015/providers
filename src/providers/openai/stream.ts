@@ -1,9 +1,9 @@
-import {  AssistantResponseContent, AssistantThinkingContent, AssistantToolCall, BaseAssistantEventMessage, BaseAssistantMessage, CompleteFunction,  Context, Model, StopReason, StreamFunction, TextContent, Usage } from "../../types.js"
+import {  AssistantResponseContent, AssistantThinkingContent, AssistantToolCall, BaseAssistantEventMessage, BaseAssistantMessage, Context, Model, StreamFunction, TextContent } from "../../types.js"
 import type {Response, ResponseCreateParamsStreaming} from "openai/resources/responses/responses.js";
 import { OpenAIProviderOptions } from "./types.js";
-import { createClient, buildParams, getResponseAssistantResponse, getResponseUsage, mapStopReason } from "./utils.js";
+import { createClient, buildParams, mapStopReason } from "./utils.js";
 import { AssistantMessageEventStream } from "../../utils/event-stream.js";
-import type {Tool as OpenAITool, ResponseCreateParamsBase, ResponseFunctionToolCall, ResponseOutputMessage, ResponseReasoningItem,} from "openai/resources/responses/responses.js";
+import type {ResponseFunctionToolCall, ResponseOutputMessage, ResponseReasoningItem,} from "openai/resources/responses/responses.js";
 import { parseStreamingJson } from "../../utils/json-parse.js";
 import { validateToolArguments } from "../../utils/validation.js";
 import { calculateCost } from "../../models.js";

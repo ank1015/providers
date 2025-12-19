@@ -1,6 +1,6 @@
-import { StreamFunction, Context, Model, StopReason, Usage, BaseAssistantEventMessage, AssistantThinkingContent, AssistantResponseContent, TextContent, AssistantToolCall, BaseAssistantMessage } from "../../types.js"
+import { StreamFunction, Context, Model, BaseAssistantEventMessage, AssistantThinkingContent, AssistantResponseContent, TextContent, AssistantToolCall, BaseAssistantMessage } from "../../types.js"
 import { Content, GenerateContentResponse, Part } from "@google/genai";
-import { createClient, buildParams, getResponseAssistantResponse, getResponseUsage, getAssistantStopReason, mapStopReason } from "./utils.js";
+import { createClient, buildParams, mapStopReason } from "./utils.js";
 import { GoogleProviderOptions } from "./types.js";
 import { AssistantMessageEventStream } from "../../utils/event-stream.js";
 import { validateToolArguments } from "../../utils/validation.js";

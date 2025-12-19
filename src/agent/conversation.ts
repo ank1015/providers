@@ -1,8 +1,8 @@
 import { getModel } from "../models.js";
-import { Api, AssistantResponse, Content, CustomMessage, Message, ToolResultMessage, UserMessage } from "../types.js";
+import { Api, AssistantResponse, Content, CustomMessage, Message, Model, OptionsForApi, ToolResultMessage, UserMessage } from "../types.js";
 import { AgentEvent, AgentLoopConfig, AgentState, AgentTool, AgentToolResult, Attachment, Provider, QueuedMessage } from "./types.js";
 import { generateUUID } from "../utils/uuid.js";
-import { complete } from "../complete.js";
+import { complete, stream } from "../llm.js";
 import { validateToolArguments } from "../utils/validation.js";
 
 export interface AgentOptions {
@@ -45,6 +45,7 @@ export class Conversation {
 	private queueMode: "all" | "one-at-a-time";
 	private runningPrompt?: Promise<void>;
 	private resolveRunningPrompt?: () => void;
+	private streamAssistantMessage: boolean = true;
 
     constructor(opts: AgentOptions = {}) {
 		const initialState = opts.initialState ?? {};
@@ -74,6 +75,10 @@ export class Conversation {
 		for (const listener of this.listeners) {
 			listener(e);
 		}
+	}
+
+	setStreamAssistantMessage(stream: boolean){
+		this.streamAssistantMessage = true;
 	}
 
 	// State mutators - update internal state without emitting events
@@ -430,19 +435,8 @@ export class Conversation {
 				queuedMessages = [];
 			}
 
-			// Get assistant response
-			const assistantMessageId = generateUUID()
-			this.emit({type: 'message_start', messageId: assistantMessageId, messageType: 'assistant'});
-			const assistantMessage = await complete(
-				cfg.provider.model, 
-				{
-					messages: updatedMessages, 
-					systemPrompt: cfg.systemPrompt, 
-					tools: cfg.tools
-				}, 
-				providerOptions, 
-				assistantMessageId);
-			this.emit({type: 'message_end', messageId: assistantMessageId, messageType: 'assistant', message: assistantMessage});
+
+			const assistantMessage = await this.callAssistant(cfg, updatedMessages, signal)
 			newMessages.push(assistantMessage);
 			this.appendMessage(assistantMessage);
 
@@ -476,6 +470,47 @@ export class Conversation {
 		}
 
 		this.emit({type: 'agent_end', agentMessages: newMessages});
+	}
+
+	private async callAssistant<TApi extends Api>(cfg: AgentLoopConfig, updatedMessages: Message[], signal: AbortSignal  ){
+		const providerOptions = {...this._state.provider.providerOptions, signal};
+		const assistantMessageId = generateUUID()
+		this.emit({type: 'message_start', messageId: assistantMessageId, messageType: 'assistant'});
+
+		if(this.streamAssistantMessage){
+
+			const assistantStream = stream(
+				cfg.provider.model,
+				{
+					messages: updatedMessages, 
+					systemPrompt: cfg.systemPrompt, 
+					tools: cfg.tools
+				},
+				providerOptions, 
+				assistantMessageId)
+
+			for await (const ev of assistantStream){
+				// emit streaming events as message updates
+				this.emit({type: 'message_update', messageId: assistantMessageId, messageType: 'assistant', message: ev})
+			}
+
+			const assistantMessage = await assistantStream.result();
+			this.emit({type: 'message_end', messageId: assistantMessageId, messageType: 'assistant', message: assistantMessage});
+			return assistantMessage
+
+		}else{
+			const assistantMessage = await complete(
+				cfg.provider.model, 
+				{
+					messages: updatedMessages, 
+					systemPrompt: cfg.systemPrompt, 
+					tools: cfg.tools
+				}, 
+				providerOptions, 
+				assistantMessageId);
+			this.emit({type: 'message_end', messageId: assistantMessageId, messageType: 'assistant', message: assistantMessage});
+			return assistantMessage;
+		}
 	}
 
 	private async executeToolCalls(tools: AgentTool[], assistantMessageContent: AssistantResponse, signal: AbortSignal): Promise<ToolResultMessage[]>{

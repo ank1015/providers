@@ -1,4 +1,4 @@
-import { Api, Content, Message, Model, OptionsForApi, Tool, ToolResultMessage,  } from "../types.js";
+import { Api, BaseAssistantEvent, Content, Message, Model, OptionsForApi, Tool, ToolResultMessage,  } from "../types.js";
 import type { Static, TSchema } from "@sinclair/typebox";
 
 
@@ -76,9 +76,9 @@ export type AgentEvent =
 	| { type: "turn_start" }
 	// Emitted when a user, assistant or tool result message starts
 	| { type: "message_start", messageType: 'user' | 'assistant' | 'toolResult' | 'custom', messageId: string }
-	// Emitted when a user, assistant or tool result message starts
-	| { type: "message_update", messageType: 'user' | 'assistant' | 'toolResult' | 'custom', messageId: string, message: Message }
-	// Emitted when a user, assistant or tool result message starts
+	// Emitted when a user, assistant or tool result message updates
+	| { type: "message_update", messageType: 'assistant' | 'custom', messageId: string, message: Message | BaseAssistantEvent<Api> }
+	// Emitted when a user, assistant or tool result message ends
 	| { type: "message_end", messageType: 'user' | 'assistant' | 'toolResult' | 'custom', messageId: string, message: Message }
 	// Emitted when a tool execution starts
 	| { type: "tool_execution_start"; toolCallId: string; toolName: string; args: any }

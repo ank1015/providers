@@ -4,7 +4,7 @@ export * from './agent/types.js';
 export * from './models.js';
 export * from './models.generated.js';
 
-export * from './complete.js';
+export * from './llm.js';
 export * from './providers/openai';
 export * from './providers/google';
 
