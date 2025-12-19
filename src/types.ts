@@ -3,6 +3,7 @@ import type { GenerateContentResponse } from "@google/genai";
 import type { TSchema } from "@sinclair/typebox";
 import { OpenAIProviderOptions } from "./providers/openai";
 import { GoogleProviderOptions } from "./providers/google";
+import { AssistantMessageEventStream } from "./utils/event-stream.js";
 
 export const KnownApis = ['openai', 'google'] as const;                                                                                                         
 export type Api = typeof KnownApis[number]; 
@@ -145,6 +146,28 @@ export type Message = UserMessage | ToolResultMessage | BaseAssistantMessage<Api
 
 
 // ################################################################
+//  Streaming Types
+// ################################################################
+
+
+export type BaseAssistantEventMessage <TApi extends Api>  = Omit <BaseAssistantMessage<TApi>, 'message'>
+
+export type BaseAssistantEvent<TApi extends Api> = 
+| { type: "start"; message: BaseAssistantEventMessage<Api> }
+| { type: "text_start"; contentIndex: number; message: BaseAssistantEventMessage<Api> }
+| { type: "text_delta"; contentIndex: number; delta: string; message: BaseAssistantEventMessage<Api> }
+| { type: "text_end"; contentIndex: number; content: Content; message: BaseAssistantEventMessage<Api> }
+| { type: "thinking_start"; contentIndex: number; message: BaseAssistantEventMessage<Api> }
+| { type: "thinking_delta"; contentIndex: number; delta: string; message: BaseAssistantEventMessage<Api> }
+| { type: "thinking_end"; contentIndex: number; content: string; message: BaseAssistantEventMessage<Api> }
+| { type: "toolcall_start"; contentIndex: number; message: BaseAssistantEventMessage<Api> }
+| { type: "toolcall_delta"; contentIndex: number; delta: string; message: BaseAssistantEventMessage<Api> }
+| { type: "toolcall_end"; contentIndex: number; toolCall: AssistantToolCall; message: BaseAssistantEventMessage<Api> }
+| { type: "done"; reason: Extract<StopReason, "stop" | "length" | "toolUse">; message: BaseAssistantEventMessage<Api> }
+| { type: "error"; reason: Extract<StopReason, "aborted" | "error">; message: BaseAssistantEventMessage<Api> };
+
+
+// ################################################################
 //  Provider Functions Types
 // ################################################################
 
@@ -173,3 +196,10 @@ export type CompleteFunction<TApi extends Api> = (
 	optionsForApi: OptionsForApi<TApi>,
 	id: string
 ) => Promise<BaseAssistantMessage<TApi>>
+
+export type StreamFunction<TApi extends Api> = (
+	model: Model<TApi>,
+	context: Context,
+	optionsForApi: OptionsForApi<TApi>,
+	id: string
+) => AssistantMessageEventStream<TApi>
