@@ -129,9 +129,9 @@ export interface BaseAssistantMessage <TApi extends Api> {
     errorMessage?: string;
     timestamp: number;
     duration: number;
-    getStopReason: () => StopReason;
-    getContent: () => AssistantResponse;
-    getUsage: () => Usage;
+	stopReason: StopReason;
+	content: AssistantResponse;
+	usage: Usage;
 }
 
 export interface CustomMessage {

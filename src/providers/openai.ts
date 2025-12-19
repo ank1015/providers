@@ -30,18 +30,6 @@ export const completeOpenAI:CompleteFunction<'openai'> = async (
         const content = getResponseAssistantResponse(response);
         const usage = getResponseUsage(response, model);
         const stopReason = mapStopReason(response?.status);
-    
-        const getStopReason = () => {
-            return stopReason
-        }
-    
-        const getContent = () => {
-            return content
-        }
-    
-        const getUsage = () => {
-            return usage
-        }
         
         return {
             role: "assistant",
@@ -51,9 +39,9 @@ export const completeOpenAI:CompleteFunction<'openai'> = async (
             model,
             timestamp: Date.now(),
             duration: Date.now() - startTimestamp,
-            getStopReason,
-            getContent,
-            getUsage
+            stopReason,
+            content,
+            usage
         }
     } catch (error){
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -70,10 +58,6 @@ export const completeOpenAI:CompleteFunction<'openai'> = async (
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 }
         };
 
-        const getStopReason = () => stopReason;
-        const getContent = () => [] as AssistantResponse;
-        const getUsage = () => emptyUsage;
-
         return {
             role: "assistant",
             message: {} as Response, // Empty response object for error case
@@ -83,9 +67,9 @@ export const completeOpenAI:CompleteFunction<'openai'> = async (
             errorMessage,
             timestamp: Date.now(),
             duration: Date.now() - startTimestamp,
-            getStopReason,
-            getContent,
-            getUsage
+            stopReason,
+            content: [],
+            usage: emptyUsage
         };
     }
 }

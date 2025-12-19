@@ -13,8 +13,13 @@ export interface AgentOptions {
 	queueMode?: "all" | "one-at-a-time";
 }
 
+const defaultModel = getModel('google', 'gemini-3-flash-preview');
+if (!defaultModel) {
+    throw new Error("Default model 'gemini-3-flash-preview' not found in models configuration");
+}
+
 const defaultProvider: Provider<'google'> = {
-    model: getModel('google', 'gemini-3-flash-preview')!,
+    model: defaultModel,
     providerOptions: {}
 }
 
@@ -28,7 +33,7 @@ const defaultConversationState: AgentState = {
 }
 
 const defaultMessageTransformer = (messages: Message[]) => {
-    return messages
+    return messages.slice(); // Return a copy to avoid mutation of original array
 }
 
 export class Conversation {
@@ -41,8 +46,17 @@ export class Conversation {
 	private runningPrompt?: Promise<void>;
 	private resolveRunningPrompt?: () => void;
 
-    constructor(opts: AgentOptions) {
-		this._state = { ...this._state, ...opts.initialState };
+    constructor(opts: AgentOptions = {}) {
+		const initialState = opts.initialState ?? {};
+		// Create fresh copies of reference types to avoid shared state between instances
+		this._state = {
+			...defaultConversationState,
+			...initialState,
+			// Override with fresh copies to ensure no shared references
+			messages: initialState.messages ? [...initialState.messages] : [],
+			tools: initialState.tools ? [...initialState.tools] : [],
+			pendingToolCalls: new Set(initialState.pendingToolCalls ?? []),
+		};
 		this.messageTransformer = opts.messageTransformer || defaultMessageTransformer;
 		this.queueMode = opts.queueMode || "one-at-a-time";
 	}
@@ -67,8 +81,8 @@ export class Conversation {
 		this._state.systemPrompt = v;
 	}
 
-    setProvider(provider: Provider<Api>){
-        this.state.provider = provider
+    setProvider<TApi extends Api>(provider: Provider<TApi>){
+        this._state.provider = provider;
     }
 
 	setQueueMode(mode: "all" | "one-at-a-time") {
@@ -92,7 +106,7 @@ export class Conversation {
 	}
 
 	appendMessages(ms: Message[]){
-		this.state.messages.push(...ms)
+		this._state.messages = [...this._state.messages, ...ms];
 	}
 
 	async queueMessage(m: Message) {
@@ -112,6 +126,45 @@ export class Conversation {
 		this._state.messages = [];
 	}
 
+	/**
+	 * Remove all event listeners.
+	 */
+	clearListeners() {
+		this.listeners.clear();
+	}
+
+	/**
+	 * Remove a message by its ID.
+	 * @returns true if the message was found and removed, false otherwise.
+	 */
+	removeMessage(messageId: string): boolean {
+		const index = this._state.messages.findIndex(m => m.id === messageId);
+		if (index === -1) return false;
+		this._state.messages = [
+			...this._state.messages.slice(0, index),
+			...this._state.messages.slice(index + 1)
+		];
+		return true;
+	}
+
+	/**
+	 * Update a message by its ID using an updater function.
+	 * @param messageId The ID of the message to update.
+	 * @param updater A function that receives the current message and returns the updated message.
+	 * @returns true if the message was found and updated, false otherwise.
+	 */
+	updateMessage(messageId: string, updater: (message: Message) => Message): boolean {
+		const index = this._state.messages.findIndex(m => m.id === messageId);
+		if (index === -1) return false;
+		const updated = updater(this._state.messages[index]);
+		this._state.messages = [
+			...this._state.messages.slice(0, index),
+			updated,
+			...this._state.messages.slice(index + 1)
+		];
+		return true;
+	}
+
 	abort() {
 		this.abortController?.abort();
 	}
@@ -125,14 +178,37 @@ export class Conversation {
 	}
 
 	/**
-	 * Clear all messages and state. Call abort() first if a prompt is in flight.
+	 * Clear all messages and state. Aborts any running prompt.
 	 */
 	reset() {
+		// Abort any running prompt first
+		this.abortController?.abort();
+		this.abortController = undefined;
+
+		// Resolve and clear running promise
+		this.resolveRunningPrompt?.();
+		this.runningPrompt = undefined;
+		this.resolveRunningPrompt = undefined;
+
+		// Clear state
 		this._state.messages = [];
 		this._state.isStreaming = false;
 		this._state.pendingToolCalls = new Set<string>();
 		this._state.error = undefined;
 		this.messageQueue = [];
+	}
+
+	/**
+	 * Internal cleanup after agent loop completes (success, error, or abort).
+	 * Always called in finally block to ensure consistent state.
+	 */
+	private _cleanup() {
+		this._state.isStreaming = false;
+		this._state.pendingToolCalls.clear();
+		this.abortController = undefined;
+		this.resolveRunningPrompt?.();
+		this.runningPrompt = undefined;
+		this.resolveRunningPrompt = undefined;
 	}
 
 	/**
@@ -156,6 +232,10 @@ export class Conversation {
     }
 
     async prompt(input: string, attachments?: Attachment[]): Promise<Message[]>  {
+		// Race condition protection - prevent concurrent prompts
+		if (this._state.isStreaming) {
+			throw new Error("Cannot start a new prompt while another is running. Use waitForIdle() to wait for completion.");
+		}
 
 		const model = this._state.provider.model;
 		if (!model) {
@@ -210,14 +290,14 @@ export class Conversation {
 	 * Used for retry after overflow recovery when context already has user message or tool results.
 	 */
 	async continue(): Promise<Message[]> {
-		const messages = this._state.messages;
-		if (messages.length === 0) {
-			throw new Error("No messages to continue from");
+		// Race condition protection - prevent concurrent prompts
+		if (this._state.isStreaming) {
+			throw new Error("Cannot continue while another prompt is running. Use waitForIdle() to wait for completion.");
 		}
 
-		const lastMessage = messages[messages.length - 1];
-		if (lastMessage.role !== "user" && lastMessage.role !== "toolResult") {
-			throw new Error(`Cannot continue from message role: ${lastMessage.role}`);
+		// Basic validation - detailed validation on transformed messages happens in _runAgentLoopContinue
+		if (this._state.messages.length === 0) {
+			throw new Error("No messages to continue from");
 		}
 
 		const newMessages = await this._runAgentLoopContinue();
@@ -226,6 +306,7 @@ export class Conversation {
 
 	/**
 	 * Prepare for running the agent loop.
+	 * Returns the config, transformed messages, and abort signal.
 	 */
 	private async _prepareRun() {
 		const model = this._state.provider.model;
@@ -238,13 +319,14 @@ export class Conversation {
 		});
 
 		this.abortController = new AbortController();
+		const signal = this.abortController.signal;
 		this._state.isStreaming = true;
 		this._state.error = undefined;
 
 		const cfg: AgentLoopConfig = {
 			systemPrompt: this._state.systemPrompt,
 			tools: this._state.tools,
-			provider: this.state.provider,
+			provider: this._state.provider,
 			getQueuedMessages: async <T>() => {
 				if (this.queueMode === "one-at-a-time") {
 					if (this.messageQueue.length > 0) {
@@ -262,54 +344,69 @@ export class Conversation {
 		}
 
 		const llmMessages = await this.messageTransformer(this._state.messages);
-		return { llmMessages, cfg };
+		return { llmMessages, cfg, signal };
 	}
 
 	/**
 	 * Internal: Run the agent loop with a new user message.
 	 */
 	private async _runAgentLoop(userMessage: Message): Promise<Message[]>{
-		const { llmMessages, cfg } = await this._prepareRun();
-
-		const updatedMessages = [...llmMessages, userMessage];
-		this.emit({type: 'agent_start'});
-		this.emit({type: 'turn_start'});
-		this.emit({type: 'message_start', messageId: userMessage.id, messageType: 'user'})
-		this.emit({type: 'message_end', messageId: userMessage.id, messageType: 'user', message: userMessage})
-		this.appendMessage(userMessage)
 		const newMessages: Message[] = [];
 
-		await this._runLoop(cfg, updatedMessages, newMessages);
-		return newMessages
+		try {
+			const { llmMessages, cfg, signal } = await this._prepareRun();
+			const updatedMessages = [...llmMessages, userMessage];
+			this.emit({type: 'agent_start'});
+			this.emit({type: 'turn_start'});
+			this.emit({type: 'message_start', messageId: userMessage.id, messageType: 'user'})
+			this.emit({type: 'message_end', messageId: userMessage.id, messageType: 'user', message: userMessage})
+			this.appendMessage(userMessage)
+
+			await this._runLoop(cfg, updatedMessages, newMessages, signal);
+			return newMessages;
+		} catch (e) {
+			this._state.error = e instanceof Error ? e.message : String(e);
+			throw e;
+		} finally {
+			this._cleanup();
+		}
 	}
 
 	private async _runAgentLoopContinue(): Promise<Message[]>{
-		const { llmMessages, cfg } = await this._prepareRun();
-
-		// Validate that we can continue from this context
-		const lastMessage = llmMessages[llmMessages.length - 1];
-		if (!lastMessage) {
-			throw new Error("Cannot continue: no messages in context");
-		}
-		if (lastMessage.role !== "user" && lastMessage.role !== "toolResult") {
-			throw new Error(`Cannot continue from message role: ${lastMessage.role}. Expected 'user' or 'toolResult'.`);
-		}
-
 		const newMessages: Message[] = [];
-		this.emit({type: 'agent_start'});
-		this.emit({type: 'turn_start'});
-		// No user message events - we're continuing from existing context
-		await this._runLoop(cfg, llmMessages, newMessages);
-		return newMessages;
+
+		try {
+			const { llmMessages, cfg, signal } = await this._prepareRun();
+
+			// Validate that we can continue from this context
+			const lastMessage = llmMessages[llmMessages.length - 1];
+			if (!lastMessage) {
+				throw new Error("Cannot continue: no messages in context");
+			}
+			if (lastMessage.role !== "user" && lastMessage.role !== "toolResult") {
+				throw new Error(`Cannot continue from message role: ${lastMessage.role}. Expected 'user' or 'toolResult'.`);
+			}
+
+			this.emit({type: 'agent_start'});
+			this.emit({type: 'turn_start'});
+			// No user message events - we're continuing from existing context
+			// Create a copy of llmMessages to avoid mutating the original array
+			await this._runLoop(cfg, [...llmMessages], newMessages, signal);
+			return newMessages;
+		} catch (e) {
+			this._state.error = e instanceof Error ? e.message : String(e);
+			throw e;
+		} finally {
+			this._cleanup();
+		}
 	}
 
-	private async _runLoop(cfg: AgentLoopConfig, updatedMessages: Message[], newMessages: Message[]){
-		const signal: AbortSignal = this.abortController?.signal!;
-		const providerOptions = {...this.state.provider.providerOptions, signal}
+	private async _runLoop(cfg: AgentLoopConfig, updatedMessages: Message[], newMessages: Message[], signal: AbortSignal){
+		const providerOptions = {...this._state.provider.providerOptions, signal}
 
 		let hasMoreToolCalls = true;
 		let firstTurn = true;
-		let queuedMessages: QueuedMessage<any>[] = (await cfg.getQueuedMessages?.()) || [];
+		let queuedMessages: QueuedMessage<any>[] = (await cfg.getQueuedMessages()) || [];
 
 		while (hasMoreToolCalls || queuedMessages.length > 0) {
 			if (!firstTurn) {
@@ -322,8 +419,8 @@ export class Conversation {
 			if (queuedMessages.length > 0) {
 				for (const { original, llm } of queuedMessages) {
 					if (llm) {
-						this.emit({type: 'message_start', messageId: llm?.id!, messageType: llm?.role })
-						this.emit({type: 'message_end', messageId: llm?.id!, messageType: llm?.role, message: llm })
+						this.emit({type: 'message_start', messageId: llm.id, messageType: llm.role })
+						this.emit({type: 'message_end', messageId: llm.id, messageType: llm.role, message: llm })
 						updatedMessages.push(llm);
 						newMessages.push(llm);
 						this.appendMessage(llm)
@@ -348,7 +445,7 @@ export class Conversation {
 			newMessages.push(assistantMessage);
 			this.appendMessage(assistantMessage);
 
-			const stopReason = assistantMessage.getStopReason()
+			const stopReason = assistantMessage.stopReason
 			if(stopReason === 'aborted' || stopReason === 'error'){
 				// Stop the loop on error or abort
 				this.emit({type: "turn_end"});
@@ -356,7 +453,7 @@ export class Conversation {
 				return;
 			}
 
-			const assistantMessageContent = assistantMessage.getContent();
+			const assistantMessageContent = assistantMessage.content;
 
 			// Check for tool calls
 			const toolCalls = assistantMessageContent.filter((c) => c.type === "toolCall");
@@ -374,30 +471,36 @@ export class Conversation {
 			this.emit({type: 'turn_end'})
 
 			// Get queued messages after turn completes
-			queuedMessages = (await cfg.getQueuedMessages?.()) || [];
+			queuedMessages = (await cfg.getQueuedMessages()) || [];
 		}
 
 		this.emit({type: 'agent_end', agentMessages: newMessages});
 	}
 
-	private async executeToolCalls<T>(tools: AgentTool[], assistantMessageContent: AssistantResponse, signal: AbortSignal): Promise<ToolResultMessage<T>[]>{
+	private async executeToolCalls(tools: AgentTool[], assistantMessageContent: AssistantResponse, signal: AbortSignal): Promise<ToolResultMessage[]>{
 		const toolCalls = assistantMessageContent.filter((c) => c.type === "toolCall");
-		const results: ToolResultMessage<any>[] = [];
-
+		const results: ToolResultMessage[] = [];
 
 		for (const toolCall of toolCalls) {
+			// Check if aborted before starting next tool execution
+			if (signal.aborted) {
+				break;
+			}
+
 			const tool = tools?.find((t) => t.name === toolCall.name);
 
+			// Track pending tool call
+			this._state.pendingToolCalls.add(toolCall.toolCallId);
 			this.emit({
 				type: 'tool_execution_start',
 				toolCallId: toolCall.toolCallId,
 				toolName: toolCall.name,
 				args: toolCall.arguments
 			})
-			let result: AgentToolResult<T>;
+
+			let result: AgentToolResult<unknown>;
 			let isError = false;
 			let errorDetails: ToolResultMessage["error"] | undefined;
-
 
 			try {
 				if (!tool) throw new Error(`Tool ${toolCall.name} not found`);
@@ -416,10 +519,10 @@ export class Conversation {
 					})
 				});
 
-			}catch(e){
+			} catch(e) {
 				result = {
 					content: [{ type: "text", content: e instanceof Error ? e.message : String(e) }],
-					details: {} as T,
+					details: {},
 				};
 				isError = true;
 				// Preserve full error details for debugging
@@ -432,6 +535,8 @@ export class Conversation {
 				}
 			}
 
+			// Remove from pending and emit end event
+			this._state.pendingToolCalls.delete(toolCall.toolCallId);
 			this.emit({
 				type: "tool_execution_end",
 				toolCallId: toolCall.toolCallId,
@@ -442,7 +547,7 @@ export class Conversation {
 
 			const messageId = generateUUID()
 
-			const toolResultMessage: ToolResultMessage<T> = {
+			const toolResultMessage: ToolResultMessage = {
 				role: "toolResult",
 				id: messageId,
 				toolCallId: toolCall.toolCallId,
