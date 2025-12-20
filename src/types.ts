@@ -1,8 +1,8 @@
 import { Response } from "openai/resources/responses/responses.js";
 import type { GenerateContentResponse } from "@google/genai";
 import type { TSchema } from "@sinclair/typebox";
-import { OpenAIProviderOptions } from "./providers/openai";
-import { GoogleProviderOptions } from "./providers/google";
+import { OpenAIProviderOptions } from "./providers/openai/index.js";
+import { GoogleProviderOptions } from "./providers/google/index.js";
 import { AssistantMessageEventStream } from "./utils/event-stream.js";
 
 export const KnownApis = ['openai', 'google'] as const;                                                                                                         

@@ -1,5 +1,6 @@
 import { Api, KnownApis, Model, Usage } from "./types.js";
 import { MODELS } from "./models.generated.js";
+import { getApiKeyFromEnv } from "./llm.js";
 
 // Extract valid model IDs for a specific API
 type ModelIdsForApi<TApi extends Api> = TApi extends keyof typeof MODELS
@@ -34,4 +35,18 @@ export function calculateCost<TApi extends Api>(model: Model<TApi>, usage: Usage
 	usage.cost.cacheWrite = (model.cost.cacheWrite / 1000000) * usage.cacheWrite;
 	usage.cost.total = usage.cost.input + usage.cost.output + usage.cost.cacheRead + usage.cost.cacheWrite;
 	return usage.cost;
+}
+
+export function getAvailableModels(): Model<Api>[] {
+	const availableModels: Model<Api>[] = [];
+
+	for (const api of KnownApis) {
+		const apiKey = getApiKeyFromEnv(api);
+		if (apiKey) {
+			const modelsForApi = getModels(api);
+			availableModels.push(...modelsForApi);
+		}
+	}
+
+	return availableModels;
 }

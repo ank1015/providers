@@ -1,5 +1,5 @@
-import { completeGoogle, GoogleProviderOptions, streamGoogle } from "./providers/google";
-import { completeOpenAI, OpenAIProviderOptions, streamOpenAI } from "./providers/openai";
+import { completeGoogle, GoogleProviderOptions, streamGoogle } from "./providers/google/index.js";
+import { completeOpenAI, OpenAIProviderOptions, streamOpenAI } from "./providers/openai/index.js";
 import { Model, Api, Context, OptionsForApi, BaseAssistantMessage } from "./types.js";
 import { AssistantMessageEventStream } from "./utils/event-stream.js";
 import { generateUUID } from "./utils/uuid.js";
