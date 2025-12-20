@@ -21,7 +21,12 @@ export const completeOpenAI:CompleteFunction<'openai'> = async (
         // Cache processed content for performance and consistency
         const content = getResponseAssistantResponse(response);
         const usage = getResponseUsage(response, model);
-        const stopReason = mapStopReason(response?.status);
+        let stopReason = mapStopReason(response?.status);
+
+        const toolCallIndex = content.findIndex(c => c.type === 'toolCall');
+        if(toolCallIndex && toolCallIndex !== -1 && stopReason === 'stop'){
+            stopReason = 'toolUse';
+        }
         
         return {
             role: "assistant",

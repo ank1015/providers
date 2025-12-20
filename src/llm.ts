@@ -94,3 +94,39 @@ export function stream<TApi extends Api>(
     }
 
 }
+
+export interface LLMClient {
+	complete<TApi extends Api>(
+		model: Model<TApi>,
+		context: Context,
+		options?: OptionsForApi<TApi>,
+		id?: string
+	): Promise<BaseAssistantMessage<TApi>>;
+
+	stream<TApi extends Api>(
+		model: Model<TApi>,
+		context: Context,
+		options?: OptionsForApi<TApi>,
+		id?: string
+	): AssistantMessageEventStream<TApi>;
+}
+
+export class DefaultLLMClient implements LLMClient {
+	async complete<TApi extends Api>(
+		model: Model<TApi>,
+		context: Context,
+		options?: OptionsForApi<TApi>,
+		id?: string
+	): Promise<BaseAssistantMessage<TApi>> {
+		return complete(model, context, options, id);
+	}
+
+	stream<TApi extends Api>(
+		model: Model<TApi>,
+		context: Context,
+		options?: OptionsForApi<TApi>,
+		id?: string
+	): AssistantMessageEventStream<TApi> {
+		return stream(model, context, options, id);
+	}
+}
