@@ -1,10 +1,10 @@
 import { getModel } from "../models.js";
-import { Api, AssistantResponse, AssistantToolCall, Content, CustomMessage, Message, Model, OptionsForApi, ToolResultMessage, UserMessage } from "../types.js";
-import { AgentEvent, AgentLoopConfig, AgentState, AgentTool, AgentToolResult, Attachment, Provider, QueuedMessage } from "./types.js";
+import { Api, CustomMessage, Message, ToolResultMessage } from "../types.js";
+import { AgentEvent, AgentLoopConfig, AgentState, AgentTool, Attachment, Provider, QueuedMessage } from "./types.js";
 import { generateUUID } from "../utils/uuid.js";
 import { LLMClient, DefaultLLMClient } from "../llm.js";
-import { validateToolArguments } from "../utils/validation.js";
-import { buildUserMessage, buildToolResultMessage } from "./utils.js";
+import { buildUserMessage } from "./utils.js";
+import { AgentRunner, AgentRunnerCallbacks, DefaultAgentRunner } from "./runner.js";
 
 export interface AgentOptions {
 	initialState?: Partial<AgentState>;
@@ -14,6 +14,8 @@ export interface AgentOptions {
 	queueMode?: "all" | "one-at-a-time";
 	// LLM Client for dependency injection
 	client?: LLMClient;
+	// Agent Runner for dependency injection
+	runner?: AgentRunner;
 }
 
 const defaultModel = getModel('google', 'gemini-3-flash-preview');
@@ -41,6 +43,7 @@ const defaultMessageTransformer = (messages: Message[]) => {
 
 export class Conversation {
 	private client: LLMClient;
+	private runner: AgentRunner;
 	private _state: AgentState = defaultConversationState;
 	private listeners = new Set<(e: AgentEvent) => void>();
 	private abortController?: AbortController;
@@ -54,6 +57,7 @@ export class Conversation {
 	constructor(opts: AgentOptions = {}) {
 		const initialState = opts.initialState ?? {};
 		this.client = opts.client ?? new DefaultLLMClient();
+		this.runner = opts.runner ?? new DefaultAgentRunner(this.client, { streamAssistantMessage: this.streamAssistantMessage });
 		// Create fresh copies of reference types to avoid shared state between instances
 		this._state = {
 			...defaultConversationState,
@@ -323,18 +327,17 @@ export class Conversation {
 	 * Internal: Run the agent loop with a new user message.
 	 */
 	private async _runAgentLoop(userMessage: Message): Promise<Message[]> {
-		const newMessages: Message[] = [];
-
 		try {
 			const { llmMessages, cfg, signal } = await this._prepareRun();
 			const updatedMessages = [...llmMessages, userMessage];
 			this.emit({ type: 'agent_start' });
 			this.emit({ type: 'turn_start' });
-			this.emit({ type: 'message_start', messageId: userMessage.id, messageType: 'user' })
-			this.emit({ type: 'message_end', messageId: userMessage.id, messageType: 'user', message: userMessage })
-			this.appendMessage(userMessage)
+			this.emit({ type: 'message_start', messageId: userMessage.id, messageType: 'user' });
+			this.emit({ type: 'message_end', messageId: userMessage.id, messageType: 'user', message: userMessage });
+			this.appendMessage(userMessage);
 
-			await this._runLoop(cfg, updatedMessages, newMessages, signal);
+			const callbacks = this._createRunnerCallbacks();
+			const newMessages = await this.runner.run(cfg, updatedMessages, (e) => this.emit(e), signal, callbacks);
 			return newMessages;
 		} catch (e) {
 			this._state.error = e instanceof Error ? e.message : String(e);
@@ -345,8 +348,6 @@ export class Conversation {
 	}
 
 	private async _runAgentLoopContinue(): Promise<Message[]> {
-		const newMessages: Message[] = [];
-
 		try {
 			const { llmMessages, cfg, signal } = await this._prepareRun();
 
@@ -361,9 +362,9 @@ export class Conversation {
 
 			this.emit({ type: 'agent_start' });
 			this.emit({ type: 'turn_start' });
-			// No user message events - we're continuing from existing context
-			// Create a copy of llmMessages to avoid mutating the original array
-			await this._runLoop(cfg, [...llmMessages], newMessages, signal);
+
+			const callbacks = this._createRunnerCallbacks();
+			const newMessages = await this.runner.run(cfg, [...llmMessages], (e) => this.emit(e), signal, callbacks);
 			return newMessages;
 		} catch (e) {
 			this._state.error = e instanceof Error ? e.message : String(e);
@@ -373,206 +374,15 @@ export class Conversation {
 		}
 	}
 
-	private async _runLoop(cfg: AgentLoopConfig, updatedMessages: Message[], newMessages: Message[], signal: AbortSignal) {
-		const providerOptions = { ...this._state.provider.providerOptions, signal }
-
-		let hasMoreToolCalls = true;
-		let firstTurn = true;
-		let queuedMessages: QueuedMessage<any>[] = (await cfg.getQueuedMessages()) || [];
-
-		while (hasMoreToolCalls || queuedMessages.length > 0) {
-			if (!firstTurn) {
-				this.emit({ type: 'turn_start' })
-			} else {
-				firstTurn = false;
-			}
-
-			// Process queued messages first (inject before next assistant response)
-			if (queuedMessages.length > 0) {
-				for (const { original, llm } of queuedMessages) {
-					if (llm) {
-						this.emit({ type: 'message_start', messageId: llm.id, messageType: llm.role })
-						this.emit({ type: 'message_end', messageId: llm.id, messageType: llm.role, message: llm })
-						updatedMessages.push(llm);
-						newMessages.push(llm);
-						this.appendMessage(llm)
-					}
-				}
-				queuedMessages = [];
-			}
-
-
-			const assistantMessage = await this.callAssistant(cfg, updatedMessages, signal)
-			newMessages.push(assistantMessage);
-			this.appendMessage(assistantMessage);
-
-			const stopReason = assistantMessage.stopReason
-			if (stopReason === 'aborted' || stopReason === 'error') {
-				// Stop the loop on error or abort
-				this.emit({ type: "turn_end" });
-				this.emit({ type: "agent_end", agentMessages: newMessages });
-				return;
-			}
-
-			const assistantMessageContent = assistantMessage.content;
-
-			// Check for tool calls
-			const toolCalls = assistantMessageContent.filter((c) => c.type === "toolCall");
-			hasMoreToolCalls = toolCalls.length > 0;
-
-			const toolResults: ToolResultMessage[] = [];
-			if (hasMoreToolCalls) {
-				// Execute tool calls
-				toolResults.push(...(await this.executeToolCalls(cfg.tools, assistantMessageContent, signal)));
-				updatedMessages.push(...toolResults);
-				newMessages.push(...toolResults);
-				this.appendMessages(toolResults);
-			}
-
-			this.emit({ type: 'turn_end' })
-
-			// Get queued messages after turn completes
-			queuedMessages = (await cfg.getQueuedMessages()) || [];
-		}
-
-		this.emit({ type: 'agent_end', agentMessages: newMessages });
-	}
-
-	private async callAssistant<TApi extends Api>(cfg: AgentLoopConfig, updatedMessages: Message[], signal: AbortSignal) {
-		const providerOptions = { ...this._state.provider.providerOptions, signal };
-		const assistantMessageId = generateUUID()
-		this.emit({ type: 'message_start', messageId: assistantMessageId, messageType: 'assistant' });
-
-		if (this.streamAssistantMessage) {
-
-			const assistantStream = this.client.stream(
-				cfg.provider.model,
-				{
-					messages: updatedMessages,
-					systemPrompt: cfg.systemPrompt,
-					tools: cfg.tools
-				},
-				providerOptions,
-				assistantMessageId)
-
-			for await (const ev of assistantStream) {
-				// emit streaming events as message updates
-				this.emit({ type: 'message_update', messageId: assistantMessageId, messageType: 'assistant', message: ev })
-			}
-
-			const assistantMessage = await assistantStream.result();
-			this.emit({ type: 'message_end', messageId: assistantMessageId, messageType: 'assistant', message: assistantMessage });
-			return assistantMessage
-
-		} else {
-			const assistantMessage = await this.client.complete(
-				cfg.provider.model,
-				{
-					messages: updatedMessages,
-					systemPrompt: cfg.systemPrompt,
-					tools: cfg.tools
-				},
-				providerOptions,
-				assistantMessageId);
-			this.emit({ type: 'message_end', messageId: assistantMessageId, messageType: 'assistant', message: assistantMessage });
-			return assistantMessage;
-		}
-	}
-
 	/**
-	 * Execute a single tool call and return the result.
-	 * Isolated from event emission and state management for easier testing.
+	 * Create callbacks for AgentRunner to interact with Conversation state.
 	 */
-	private async executeSingleTool(
-		tool: AgentTool | undefined,
-		toolCall: AssistantToolCall,
-		signal: AbortSignal,
-		onUpdate: (partialResult: AgentToolResult<any>) => void
-	): Promise<{ result: AgentToolResult<unknown>; isError: boolean; errorDetails?: ToolResultMessage['error'] }> {
-
-		if (!tool) {
-			return {
-				result: {
-					content: [{ type: 'text', content: `Tool ${toolCall.name} not found` }],
-					details: {}
-				},
-				isError: true,
-				errorDetails: {
-					message: `Tool ${toolCall.name} not found`,
-					name: 'ToolNotFoundError'
-				}
-			};
-		}
-
-		try {
-			const validatedArgs = validateToolArguments(tool, toolCall);
-			const result = await tool.execute(toolCall.toolCallId, validatedArgs, signal, onUpdate);
-			return { result, isError: false };
-		} catch (e) {
-			const message = e instanceof Error ? e.message : String(e);
-			return {
-				result: {
-					content: [{ type: 'text', content: message }],
-					details: {}
-				},
-				isError: true,
-				errorDetails: e instanceof Error
-					? { message: e.message, name: e.name, stack: e.stack }
-					: undefined
-			};
-		}
-	}
-
-	private async executeToolCalls(tools: AgentTool[], assistantMessageContent: AssistantResponse, signal: AbortSignal): Promise<ToolResultMessage[]> {
-		const toolCalls = assistantMessageContent.filter((c) => c.type === "toolCall");
-		const results: ToolResultMessage[] = [];
-
-		for (const toolCall of toolCalls) {
-			if (signal.aborted) break;
-
-			const tool = tools.find((t) => t.name === toolCall.name);
-
-			// Track pending and emit start
-			this._state.pendingToolCalls.add(toolCall.toolCallId);
-			this.emit({
-				type: 'tool_execution_start',
-				toolCallId: toolCall.toolCallId,
-				toolName: toolCall.name,
-				args: toolCall.arguments
-			});
-
-			// Execute the tool
-			const { result, isError, errorDetails } = await this.executeSingleTool(
-				tool,
-				toolCall,
-				signal,
-				(partialResult) => this.emit({
-					type: 'tool_execution_update',
-					toolCallId: toolCall.toolCallId,
-					toolName: toolCall.name,
-					args: toolCall.arguments,
-					partialResult
-				})
-			);
-
-			// Cleanup and emit end
-			this._state.pendingToolCalls.delete(toolCall.toolCallId);
-			this.emit({
-				type: 'tool_execution_end',
-				toolCallId: toolCall.toolCallId,
-				toolName: toolCall.name,
-				result,
-				isError
-			});
-
-			// Build and emit message
-			const toolResultMessage = buildToolResultMessage(toolCall, result, isError, errorDetails);
-			results.push(toolResultMessage);
-
-			this.emit({ type: 'message_start', messageId: toolResultMessage.id, messageType: 'toolResult' });
-			this.emit({ type: 'message_end', messageId: toolResultMessage.id, messageType: 'toolResult', message: toolResultMessage });
-		}
-
-		return results;
+	private _createRunnerCallbacks(): AgentRunnerCallbacks {
+		return {
+			appendMessage: (m) => this.appendMessage(m),
+			appendMessages: (ms) => this.appendMessages(ms),
+			addPendingToolCall: (id) => this._state.pendingToolCalls.add(id),
+			removePendingToolCall: (id) => this._state.pendingToolCalls.delete(id),
+		};
 	}
 }
