@@ -4,6 +4,7 @@ import { AgentEvent, AgentLoopConfig, AgentState, AgentTool, AgentToolResult, At
 import { generateUUID } from "../utils/uuid.js";
 import { complete, stream } from "../llm.js";
 import { validateToolArguments } from "../utils/validation.js";
+import { buildUserMessage, buildToolResultMessage } from "./utils.js";
 
 export interface AgentOptions {
     initialState?: Partial<AgentState>;
@@ -247,46 +248,7 @@ export class Conversation {
 			throw new Error("No model configured");
 		}
 
-		const content: Content = [];
-		content.push({
-			type: 'text',
-			content: input
-		})
-		if(attachments?.length){
-			for (const attachment of attachments){
-				if(attachment.type === 'image'){
-					content.push({
-						type: 'image',
-						data: attachment.content,
-						mimeType: attachment.mimeType,
-						metadata: {
-							fileName: attachment.fileName,
-							size: attachment.size || 0
-						}
-					})
-				}
-				if(attachment.type === 'file'){
-					content.push({
-						type: 'file',
-						data: attachment.content,
-						mimeType: attachment.mimeType,
-						filename: attachment.fileName,
-						metadata: {
-							fileName: attachment.fileName,
-							size: attachment.size || 0
-						}
-					})
-				}
-			}
-		}
-		const userMessageId = generateUUID()
-		const userMessage: UserMessage = {
-			role: 'user',
-			id: userMessageId,
-			timestamp: Date.now(),
-			content
-		};
-
+		const userMessage = buildUserMessage(input, attachments);
 		const newMessages = await this._runAgentLoop(userMessage);
 		return newMessages;
     }
@@ -581,29 +543,17 @@ export class Conversation {
 				isError,
 			})
 
-			const messageId = generateUUID()
-
-			const toolResultMessage: ToolResultMessage = {
-				role: "toolResult",
-				id: messageId,
-				toolCallId: toolCall.toolCallId,
-				toolName: toolCall.name,
-				content: result.content,
-				details: result.details,
-				isError,
-				error: errorDetails,
-				timestamp: Date.now(),
-			};
+			const toolResultMessage = buildToolResultMessage(toolCall, result, isError, errorDetails);
 
 			results.push(toolResultMessage);
 			this.emit({
 				type: 'message_start',
-				messageId,
+				messageId: toolResultMessage.id,
 				messageType: 'toolResult'
 			})
 			this.emit({
 				type: 'message_end',
-				messageId,
+				messageId: toolResultMessage.id,
 				messageType: 'toolResult',
 				message: toolResultMessage
 			})

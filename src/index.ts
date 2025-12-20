@@ -9,6 +9,7 @@ export * from './providers/openai/index.js';
 export * from './providers/google/index.js';
 
 export * from './agent/conversation.js';
+export * from './agent/utils.js';
 
 export * from './utils/sanitize-unicode.js';
 export * from './utils/uuid.js';
