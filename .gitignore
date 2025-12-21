@@ -6,6 +6,7 @@ pnpm-lock.yaml
 dist/
 build/
 *.tsbuildinfo
+examples/**/dist/
 
 # Environment
 .env
