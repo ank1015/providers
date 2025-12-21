@@ -159,6 +159,7 @@ export class DefaultAgentRunner implements AgentRunner {
             }
 
             const assistantMessage = await assistantStream.result();
+
             emit({ type: 'message_end', messageId: assistantMessageId, messageType: 'assistant', message: assistantMessage });
             return assistantMessage as BaseAssistantMessage<TApi>;
         } else {

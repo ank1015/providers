@@ -1,24 +1,24 @@
-import {  AssistantResponseContent, AssistantThinkingContent, AssistantToolCall, BaseAssistantEventMessage, BaseAssistantMessage, Context, Model, StreamFunction, TextContent } from "../../types.js"
-import type {Response, ResponseCreateParamsStreaming} from "openai/resources/responses/responses.js";
+import { AssistantResponseContent, AssistantThinkingContent, AssistantToolCall, BaseAssistantEventMessage, BaseAssistantMessage, Context, Model, StreamFunction, TextContent } from "../../types.js"
+import type { Response, ResponseCreateParamsStreaming } from "openai/resources/responses/responses.js";
 import { OpenAIProviderOptions } from "./types.js";
 import { createClient, buildParams, mapStopReason } from "./utils.js";
 import { AssistantMessageEventStream } from "../../utils/event-stream.js";
-import type {ResponseFunctionToolCall, ResponseOutputMessage, ResponseReasoningItem,} from "openai/resources/responses/responses.js";
+import type { ResponseFunctionToolCall, ResponseOutputMessage, ResponseReasoningItem, } from "openai/resources/responses/responses.js";
 import { parseStreamingJson } from "../../utils/json-parse.js";
 import { validateToolArguments } from "../../utils/validation.js";
 import { calculateCost } from "../../models.js";
 
 
-export const streamOpenAI:StreamFunction<'openai'> = (
-    model: Model<'openai'>,
-    context: Context,
-    options: OpenAIProviderOptions,
-    id: string
+export const streamOpenAI: StreamFunction<'openai'> = (
+	model: Model<'openai'>,
+	context: Context,
+	options: OpenAIProviderOptions,
+	id: string
 ) => {
 
-    const stream = new AssistantMessageEventStream<'openai'>();
+	const stream = new AssistantMessageEventStream<'openai'>();
 
-    (async () => {
+	(async () => {
 
 		const startTimestamp = Date.now();
 		const output: BaseAssistantEventMessage<'openai'> = {
@@ -37,7 +37,7 @@ export const streamOpenAI:StreamFunction<'openai'> = (
 			},
 			stopReason: "stop",
 			timestamp: startTimestamp,
-            duration: 0
+			duration: 0
 		};
 		let finalResponse: Response = {
 			id: "resp_123",
@@ -60,33 +60,33 @@ export const streamOpenAI:StreamFunction<'openai'> = (
 			top_p: 1,
 			truncation: "disabled",
 			usage: {
-			  input_tokens: 0,
-			  output_tokens: 0,
-			  output_tokens_details: {
-				reasoning_tokens: 0
-			  },
-			  input_tokens_details: {
-				cached_tokens: 0
-			  },
-			  total_tokens: 0
+				input_tokens: 0,
+				output_tokens: 0,
+				output_tokens_details: {
+					reasoning_tokens: 0
+				},
+				input_tokens_details: {
+					cached_tokens: 0
+				},
+				total_tokens: 0
 			},
 			user: undefined,
 			metadata: {}
-		  }
+		}
 
-        try{
+		try {
 
-            const client = createClient(model, options?.apiKey);
-            const params = buildParams(model, context, options);
+			const client = createClient(model, options?.apiKey);
+			const params = buildParams(model, context, options);
 
-            const paramsStreaming: ResponseCreateParamsStreaming = {
-                ...params,
-                stream: true
-            }
+			const paramsStreaming: ResponseCreateParamsStreaming = {
+				...params,
+				stream: true
+			}
 
 			const openaiStream = await client.responses.create(paramsStreaming, { signal: options?.signal });
 
-			stream.push({ type: "start", message: {...output, timestamp: Date.now()} });
+			stream.push({ type: "start", message: { ...output, timestamp: Date.now() } });
 
 			let currentItem: ResponseReasoningItem | ResponseOutputMessage | ResponseFunctionToolCall | null = null;
 			let currentBlock: AssistantThinkingContent | AssistantResponseContent | (AssistantToolCall & { partialJson: string }) | null = null;
@@ -102,12 +102,12 @@ export const streamOpenAI:StreamFunction<'openai'> = (
 						currentItem = item;
 						currentBlock = { type: "thinking", thinkingText: "" };
 						output.content.push(currentBlock);
-						stream.push({ type: "thinking_start", contentIndex: blockIndex(), message: {...output, timestamp: Date.now()} });
+						stream.push({ type: "thinking_start", contentIndex: blockIndex(), message: { ...output, timestamp: Date.now() } });
 					} else if (item.type === "message") {
 						currentItem = item;
-						currentBlock = { type: "response", content: [{type: 'text', content: ""}] };
+						currentBlock = { type: "response", content: [{ type: 'text', content: "" }] };
 						output.content.push(currentBlock);
-						stream.push({ type: "text_start", contentIndex: blockIndex(), message: {...output, timestamp: Date.now()} });
+						stream.push({ type: "text_start", contentIndex: blockIndex(), message: { ...output, timestamp: Date.now() } });
 					} else if (item.type === "function_call") {
 						currentItem = item;
 						currentBlock = {
@@ -118,7 +118,7 @@ export const streamOpenAI:StreamFunction<'openai'> = (
 							partialJson: item.arguments || "",
 						};
 						output.content.push(currentBlock);
-						stream.push({ type: "toolcall_start", contentIndex: blockIndex(), message: {...output, timestamp: Date.now()} });
+						stream.push({ type: "toolcall_start", contentIndex: blockIndex(), message: { ...output, timestamp: Date.now() } });
 					}
 				}
 				// Handle reasoning summary deltas
@@ -143,7 +143,7 @@ export const streamOpenAI:StreamFunction<'openai'> = (
 								type: "thinking_delta",
 								contentIndex: blockIndex(),
 								delta: event.delta,
-								message: {...output, timestamp: Date.now()},
+								message: { ...output, timestamp: Date.now() },
 							});
 						}
 					}
@@ -165,7 +165,7 @@ export const streamOpenAI:StreamFunction<'openai'> = (
 								type: "thinking_delta",
 								contentIndex: blockIndex(),
 								delta: "\n\n",
-								message: {...output, timestamp: Date.now()},
+								message: { ...output, timestamp: Date.now() },
 							});
 						}
 					}
@@ -180,16 +180,16 @@ export const streamOpenAI:StreamFunction<'openai'> = (
 					if (currentItem && currentItem.type === "message" && currentBlock && currentBlock.type === "response") {
 						const lastPart = currentItem.content[currentItem.content.length - 1];
 						if (lastPart && lastPart.type === "output_text") {
-                            const index = currentBlock.content.findIndex((c) => c.type === 'text');
-                            if( index && index !== -1){
-                                (currentBlock.content[index] as TextContent).content += event.delta;
-                            }
+							const index = currentBlock.content.findIndex((c) => c.type === 'text');
+							if (index !== -1) {
+								(currentBlock.content[index] as TextContent).content += event.delta;
+							}
 							lastPart.text += event.delta;
 							stream.push({
 								type: "text_delta",
 								contentIndex: blockIndex(),
 								delta: event.delta,
-								message: {...output, timestamp: Date.now()},
+								message: { ...output, timestamp: Date.now() },
 							});
 						}
 					}
@@ -197,16 +197,16 @@ export const streamOpenAI:StreamFunction<'openai'> = (
 					if (currentItem && currentItem.type === "message" && currentBlock && currentBlock.type === "response") {
 						const lastPart = currentItem.content[currentItem.content.length - 1];
 						if (lastPart && lastPart.type === "refusal") {
-                            const index = currentBlock.content.findIndex((c) => c.type === 'text');
-                            if( index && index !== -1){
-                                (currentBlock.content[index] as TextContent).content += event.delta;
-                            }
+							const index = currentBlock.content.findIndex((c) => c.type === 'text');
+							if (index !== -1) {
+								(currentBlock.content[index] as TextContent).content += event.delta;
+							}
 							lastPart.refusal += event.delta;
 							stream.push({
 								type: "text_delta",
 								contentIndex: blockIndex(),
 								delta: event.delta,
-								message: {...output, timestamp: Date.now()},
+								message: { ...output, timestamp: Date.now() },
 							});
 						}
 					}
@@ -225,7 +225,7 @@ export const streamOpenAI:StreamFunction<'openai'> = (
 							type: "toolcall_delta",
 							contentIndex: blockIndex(),
 							delta: event.delta,
-							message: {...output, timestamp: Date.now()},
+							message: { ...output, timestamp: Date.now() },
 						});
 					}
 				}
@@ -239,19 +239,19 @@ export const streamOpenAI:StreamFunction<'openai'> = (
 							type: "thinking_end",
 							contentIndex: blockIndex(),
 							content: currentBlock.thinkingText,
-							message: {...output, timestamp: Date.now()},
+							message: { ...output, timestamp: Date.now() },
 						});
 						currentBlock = null;
 					} else if (item.type === "message" && currentBlock && currentBlock.type === "response") {
-                        const index = currentBlock.content.findIndex(c => c.type === 'text');
-                        if(index && index !== -1){
-                            (currentBlock.content[index] as TextContent).content = item.content.map((c) => (c.type === "output_text" ? c.text : c.refusal)).join("");
-                        }
+						const index = currentBlock.content.findIndex(c => c.type === 'text');
+						if (index !== -1) {
+							(currentBlock.content[index] as TextContent).content = item.content.map((c) => (c.type === "output_text" ? c.text : c.refusal)).join("");
+						}
 						stream.push({
 							type: "text_end",
 							contentIndex: blockIndex(),
 							content: currentBlock.content,
-							message: {...output, timestamp: Date.now()},
+							message: { ...output, timestamp: Date.now() },
 						});
 						currentBlock = null;
 					} else if (item.type === "function_call") {
@@ -270,7 +270,7 @@ export const streamOpenAI:StreamFunction<'openai'> = (
 							}
 						}
 
-						stream.push({ type: "toolcall_end", contentIndex: blockIndex(), toolCall, message: {...output, timestamp: Date.now()} });
+						stream.push({ type: "toolcall_end", contentIndex: blockIndex(), toolCall, message: { ...output, timestamp: Date.now() } });
 					}
 				}
 				// Handle completion
@@ -303,7 +303,7 @@ export const streamOpenAI:StreamFunction<'openai'> = (
 				} else if (event.type === "response.failed") {
 					throw new Error("OpenAI response failed without error details");
 				}
-            }
+			}
 
 			if (options?.signal?.aborted) {
 				throw new Error("Request was aborted");
@@ -315,36 +315,36 @@ export const streamOpenAI:StreamFunction<'openai'> = (
 				);
 			}
 
-			stream.push({ type: "done", reason: output.stopReason, message: {...output, timestamp: Date.now()} });
+			stream.push({ type: "done", reason: output.stopReason, message: { ...output, timestamp: Date.now() } });
 
-            const baseAssistantMessage: BaseAssistantMessage<'openai'> = {
-                ...output,
-                message: finalResponse,
-                timestamp: Date.now(),
-                duration: Date.now() - startTimestamp
-            }
-            stream.end(baseAssistantMessage);
+			const baseAssistantMessage: BaseAssistantMessage<'openai'> = {
+				...output,
+				message: finalResponse,
+				timestamp: Date.now(),
+				duration: Date.now() - startTimestamp
+			}
+			stream.end(baseAssistantMessage);
 
-        }catch(error){
+		} catch (error) {
 
 			for (const block of output.content) delete (block as any).index;
 			output.stopReason = options?.signal?.aborted ? "aborted" : "error";
 			output.errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-			stream.push({ type: "error", reason: output.stopReason, message: {...output, timestamp: Date.now()} });
+			stream.push({ type: "error", reason: output.stopReason, message: { ...output, timestamp: Date.now() } });
 
 			// Update finalResponse to reflect the error state
 			finalResponse.status = options?.signal?.aborted ? "cancelled" : "failed";
 
-            const baseAssistantMessage: BaseAssistantMessage<'openai'> = {
-                ...output,
-                message: finalResponse,
-                timestamp: Date.now(),
-                duration: Date.now() - startTimestamp
-            }
-            stream.end(baseAssistantMessage);
-        }
+			const baseAssistantMessage: BaseAssistantMessage<'openai'> = {
+				...output,
+				message: finalResponse,
+				timestamp: Date.now(),
+				duration: Date.now() - startTimestamp
+			}
+			stream.end(baseAssistantMessage);
+		}
 
-    })();
+	})();
 
-    return stream;
+	return stream;
 }

@@ -88,6 +88,8 @@ export class Conversation {
 
 	setStreamAssistantMessage(stream: boolean) {
 		this.streamAssistantMessage = stream;
+		// Recreate runner with updated streaming setting
+		this.runner = new DefaultAgentRunner(this.client, { streamAssistantMessage: stream });
 	}
 
 	// State mutators - update internal state without emitting events
