@@ -23,17 +23,18 @@ export interface FindToolDetails {
 	resultLimitReached?: number;
 }
 
-export const findTool: AgentTool<typeof findSchema> = {
-	name: "find",
-	label: "find",
-	description: `Search for files by glob pattern. Returns matching file paths relative to the search directory. Respects .gitignore. Output is truncated to ${DEFAULT_LIMIT} results or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first).`,
-	parameters: findSchema,
-	execute: async (
-		_toolCallId: string,
-		{ pattern, path: searchDir, limit }: { pattern: string; path?: string; limit?: number },
-		signal?: AbortSignal,
-	) => {
-		return new Promise((resolve, reject) => {
+export function createFindTool(workingDirectory: string): AgentTool<typeof findSchema> {
+	return {
+		name: "find",
+		label: "find",
+		description: `Search for files by glob pattern. Returns matching file paths relative to the search directory. Respects .gitignore. Output is truncated to ${DEFAULT_LIMIT} results or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first).`,
+		parameters: findSchema,
+		execute: async (
+			_toolCallId: string,
+			{ pattern, path: searchDir, limit }: { pattern: string; path?: string; limit?: number },
+			signal?: AbortSignal,
+		) => {
+			return new Promise((resolve, reject) => {
 			if (signal?.aborted) {
 				reject(new Error("Operation aborted"));
 				return;
@@ -51,7 +52,9 @@ export const findTool: AgentTool<typeof findSchema> = {
 						return;
 					}
 
-					const searchPath = path.resolve(expandPath(searchDir || "."));
+					const searchPath = searchDir
+					? path.resolve(workingDirectory, expandPath(searchDir))
+					: workingDirectory;
 					const effectiveLimit = limit ?? DEFAULT_LIMIT;
 
 					// Build fd arguments
@@ -186,5 +189,6 @@ export const findTool: AgentTool<typeof findSchema> = {
 				}
 			})();
 		});
-	},
-};
+		},
+	};
+}

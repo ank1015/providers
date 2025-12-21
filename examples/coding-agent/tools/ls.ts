@@ -17,23 +17,26 @@ export interface LsToolDetails {
 	entryLimitReached?: number;
 }
 
-export const lsTool: AgentTool<typeof lsSchema> = {
-	name: "ls",
-	label: "ls",
-	description: `List directory contents. Returns entries sorted alphabetically, with '/' suffix for directories. Includes dotfiles. Output is truncated to ${DEFAULT_LIMIT} entries or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first).`,
-	parameters: lsSchema,
-	execute: async (_toolCallId: string, { path, limit }: { path?: string; limit?: number }, signal?: AbortSignal) => {
-		return new Promise((resolve, reject) => {
-			if (signal?.aborted) {
-				reject(new Error("Operation aborted"));
-				return;
-			}
+export function createLsTool(workingDirectory: string): AgentTool<typeof lsSchema> {
+	return {
+		name: "ls",
+		label: "ls",
+		description: `List directory contents. Returns entries sorted alphabetically, with '/' suffix for directories. Includes dotfiles. Output is truncated to ${DEFAULT_LIMIT} entries or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first).`,
+		parameters: lsSchema,
+		execute: async (_toolCallId: string, { path, limit }: { path?: string; limit?: number }, signal?: AbortSignal) => {
+			return new Promise((resolve, reject) => {
+				if (signal?.aborted) {
+					reject(new Error("Operation aborted"));
+					return;
+				}
 
-			const onAbort = () => reject(new Error("Operation aborted"));
-			signal?.addEventListener("abort", onAbort, { once: true });
+				const onAbort = () => reject(new Error("Operation aborted"));
+				signal?.addEventListener("abort", onAbort, { once: true });
 
-			try {
-				const dirPath = nodePath.resolve(expandPath(path || "."));
+				try {
+					const dirPath = path
+						? nodePath.resolve(workingDirectory, expandPath(path))
+						: workingDirectory;
 				const effectiveLimit = limit ?? DEFAULT_LIMIT;
 
 				// Check if path exists
@@ -127,5 +130,6 @@ export const lsTool: AgentTool<typeof lsSchema> = {
 				reject(e);
 			}
 		});
-	},
-};
+		},
+	};
+}

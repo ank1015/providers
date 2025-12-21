@@ -1,32 +1,36 @@
-export { type BashToolDetails, bashTool } from "./bash.js";
-export { editTool } from "./edit.js";
-export { type FindToolDetails, findTool } from "./find.js";
-export { type GrepToolDetails, grepTool } from "./grep.js";
-export { type LsToolDetails, lsTool } from "./ls.js";
-export { type ReadToolDetails, readTool } from "./read.js";
+export { type BashToolDetails, createBashTool } from "./bash.js";
+export { createEditTool } from "./edit.js";
+export { type FindToolDetails, createFindTool } from "./find.js";
+export { type GrepToolDetails, createGrepTool } from "./grep.js";
+export { type LsToolDetails, createLsTool } from "./ls.js";
+export { type ReadToolDetails, createReadTool } from "./read.js";
 export type { TruncationResult } from "./truncate.js";
-export { writeTool } from "./write.js";
+export { createWriteTool } from "./write.js";
 
-import { bashTool } from "./bash.js";
-import { editTool } from "./edit.js";
-import { findTool } from "./find.js";
-import { grepTool } from "./grep.js";
-import { lsTool } from "./ls.js";
-import { readTool } from "./read.js";
-import { writeTool } from "./write.js";
+import { createBashTool } from "./bash.js";
+import { createEditTool } from "./edit.js";
+import { createFindTool } from "./find.js";
+import { createGrepTool } from "./grep.js";
+import { createLsTool } from "./ls.js";
+import { createReadTool } from "./read.js";
+import { createWriteTool } from "./write.js";
 
-// Default tools for full access mode
-export const codingTools = [readTool, bashTool, editTool, writeTool];
+// Factory function to create tools with a specific working directory
+export function createCodingTools(workingDirectory: string) {
+	const readTool = createReadTool(workingDirectory);
+	const bashTool = createBashTool(workingDirectory);
+	const editTool = createEditTool(workingDirectory);
+	const writeTool = createWriteTool(workingDirectory);
+	const grepTool = createGrepTool(workingDirectory);
+	const findTool = createFindTool(workingDirectory);
+	const lsTool = createLsTool(workingDirectory);
 
-// All available tools (including read-only exploration tools)
-export const allTools = {
-	read: readTool,
-	bash: bashTool,
-	edit: editTool,
-	write: writeTool,
-	grep: grepTool,
-	find: findTool,
-	ls: lsTool,
-};
+	return {
+		// Default tools for full access mode
+		codingTools: [readTool, bashTool, editTool, writeTool],
 
-export type ToolName = keyof typeof allTools;
+		allTools: [readTool, bashTool, editTool, writeTool, grepTool, findTool, lsTool]
+	};
+}
+
+export type ToolName = "read" | "bash" | "edit" | "write" | "grep" | "find" | "ls";

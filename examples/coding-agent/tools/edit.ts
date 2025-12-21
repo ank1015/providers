@@ -107,18 +107,19 @@ const editSchema = Type.Object({
 	newText: Type.String({ description: "New text to replace the old text with" }),
 });
 
-export const editTool: AgentTool<typeof editSchema> = {
-	name: "edit",
-	label: "edit",
-	description:
-		"Edit a file by replacing exact text. The oldText must match exactly (including whitespace). Use this for precise, surgical edits.",
-	parameters: editSchema,
-	execute: async (
-		_toolCallId: string,
-		{ path, oldText, newText }: { path: string; oldText: string; newText: string },
-		signal?: AbortSignal,
-	) => {
-		const absolutePath = resolvePath(expandPath(path));
+export function createEditTool(workingDirectory: string): AgentTool<typeof editSchema> {
+	return {
+		name: "edit",
+		label: "edit",
+		description:
+			"Edit a file by replacing exact text. The oldText must match exactly (including whitespace). Use this for precise, surgical edits.",
+		parameters: editSchema,
+		execute: async (
+			_toolCallId: string,
+			{ path, oldText, newText }: { path: string; oldText: string; newText: string },
+			signal?: AbortSignal,
+		) => {
+			const absolutePath = resolvePath(workingDirectory, expandPath(path));
 
 		return new Promise<{
 			content: Array<{ type: "text"; content: string }>;
@@ -253,5 +254,6 @@ export const editTool: AgentTool<typeof editSchema> = {
 				}
 			})();
 		});
-	},
-};
+		},
+	};
+}

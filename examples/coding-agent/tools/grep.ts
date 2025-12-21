@@ -37,33 +37,34 @@ export interface GrepToolDetails {
 	linesTruncated?: boolean;
 }
 
-export const grepTool: AgentTool<typeof grepSchema> = {
-	name: "grep",
-	label: "grep",
-	description: `Search file contents for a pattern. Returns matching lines with file paths and line numbers. Respects .gitignore. Output is truncated to ${DEFAULT_LIMIT} matches or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). Long lines are truncated to ${GREP_MAX_LINE_LENGTH} chars.`,
-	parameters: grepSchema,
-	execute: async (
-		_toolCallId: string,
-		{
-			pattern,
-			path: searchDir,
-			glob,
-			ignoreCase,
-			literal,
-			context,
-			limit,
-		}: {
-			pattern: string;
-			path?: string;
-			glob?: string;
-			ignoreCase?: boolean;
-			literal?: boolean;
-			context?: number;
-			limit?: number;
-		},
-		signal?: AbortSignal,
-	) => {
-		return new Promise((resolve, reject) => {
+export function createGrepTool(workingDirectory: string): AgentTool<typeof grepSchema> {
+	return {
+		name: "grep",
+		label: "grep",
+		description: `Search file contents for a pattern. Returns matching lines with file paths and line numbers. Respects .gitignore. Output is truncated to ${DEFAULT_LIMIT} matches or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). Long lines are truncated to ${GREP_MAX_LINE_LENGTH} chars.`,
+		parameters: grepSchema,
+		execute: async (
+			_toolCallId: string,
+			{
+				pattern,
+				path: searchDir,
+				glob,
+				ignoreCase,
+				literal,
+				context,
+				limit,
+			}: {
+				pattern: string;
+				path?: string;
+				glob?: string;
+				ignoreCase?: boolean;
+				literal?: boolean;
+				context?: number;
+				limit?: number;
+			},
+			signal?: AbortSignal,
+		) => {
+			return new Promise((resolve, reject) => {
 			if (signal?.aborted) {
 				reject(new Error("Operation aborted"));
 				return;
@@ -85,7 +86,9 @@ export const grepTool: AgentTool<typeof grepSchema> = {
 						return;
 					}
 
-					const searchPath = path.resolve(expandPath(searchDir || "."));
+					const searchPath = searchDir
+					? path.resolve(workingDirectory, expandPath(searchDir))
+					: workingDirectory;
 					let searchStat: Stats;
 					try {
 						searchStat = statSync(searchPath);
@@ -303,5 +306,6 @@ export const grepTool: AgentTool<typeof grepSchema> = {
 				}
 			})();
 		});
-	},
-};
+		},
+	};
+}

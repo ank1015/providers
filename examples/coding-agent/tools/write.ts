@@ -9,14 +9,15 @@ const writeSchema = Type.Object({
 	content: Type.String({ description: "Content to write to the file" }),
 });
 
-export const writeTool: AgentTool<typeof writeSchema> = {
-	name: "write",
-	label: "write",
-	description:
-		"Write content to a file. Creates the file if it doesn't exist, overwrites if it does. Automatically creates parent directories.",
-	parameters: writeSchema,
-	execute: async (_toolCallId: string, { path, content }: { path: string; content: string }, signal?: AbortSignal) => {
-		const absolutePath = resolvePath(expandPath(path));
+export function createWriteTool(workingDirectory: string): AgentTool<typeof writeSchema> {
+	return {
+		name: "write",
+		label: "write",
+		description:
+			"Write content to a file. Creates the file if it doesn't exist, overwrites if it does. Automatically creates parent directories.",
+		parameters: writeSchema,
+		execute: async (_toolCallId: string, { path, content }: { path: string; content: string }, signal?: AbortSignal) => {
+			const absolutePath = resolvePath(workingDirectory, expandPath(path));
 		const dir = dirname(absolutePath);
 
 		return new Promise<{ content: Array<{ type: "text"; content: string }>; details: undefined }>((resolve, reject) => {
@@ -78,5 +79,6 @@ export const writeTool: AgentTool<typeof writeSchema> = {
 				}
 			})();
 		});
-	},
-};
+		},
+	};
+}

@@ -26,23 +26,25 @@ export interface BashToolDetails {
 	fullOutputPath?: string;
 }
 
-export const bashTool: AgentTool<typeof bashSchema> = {
-	name: "bash",
-	label: "bash",
-	description: `Execute a bash command in the current working directory. Returns stdout and stderr. Output is truncated to last ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.`,
-	parameters: bashSchema,
-	execute: async (
-		_toolCallId: string,
-		{ command, timeout }: { command: string; timeout?: number },
-		signal?: AbortSignal,
-		onUpdate?,
-	) => {
-		return new Promise((resolve, reject) => {
-			const { shell, args } = getShellConfig();
-			const child = spawn(shell, [...args, command], {
-				detached: true,
-				stdio: ["ignore", "pipe", "pipe"],
-			});
+export function createBashTool(workingDirectory: string): AgentTool<typeof bashSchema> {
+	return {
+		name: "bash",
+		label: "bash",
+		description: `Execute a bash command in the current working directory. Returns stdout and stderr. Output is truncated to last ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.`,
+		parameters: bashSchema,
+		execute: async (
+			_toolCallId: string,
+			{ command, timeout }: { command: string; timeout?: number },
+			signal?: AbortSignal,
+			onUpdate?,
+		) => {
+			return new Promise((resolve, reject) => {
+				const { shell, args } = getShellConfig();
+				const child = spawn(shell, [...args, command], {
+					detached: true,
+					stdio: ["ignore", "pipe", "pipe"],
+					cwd: workingDirectory,
+				});
 
 			// We'll stream to a temp file if output gets large
 			let tempFilePath: string | undefined;
@@ -202,5 +204,6 @@ export const bashTool: AgentTool<typeof bashSchema> = {
 				}
 			}
 		});
-	},
-};
+		},
+	};
+}

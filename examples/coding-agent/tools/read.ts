@@ -17,17 +17,18 @@ export interface ReadToolDetails {
 	truncation?: TruncationResult;
 }
 
-export const readTool: AgentTool<typeof readSchema> = {
-	name: "read",
-	label: "read",
-	description: `Read the contents of a file. Supports text files and images (jpg, png, gif, webp). Images are sent as attachments. For text files, output is truncated to ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). Use offset/limit for large files.`,
-	parameters: readSchema,
-	execute: async (
-		_toolCallId: string,
-		{ path, offset, limit }: { path: string; offset?: number; limit?: number },
-		signal?: AbortSignal,
-	) => {
-		const absolutePath = resolvePath(resolveReadPath(path));
+export function createReadTool(workingDirectory: string): AgentTool<typeof readSchema> {
+	return {
+		name: "read",
+		label: "read",
+		description: `Read the contents of a file. Supports text files and images (jpg, png, gif, webp). Images are sent as attachments. For text files, output is truncated to ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). Use offset/limit for large files.`,
+		parameters: readSchema,
+		execute: async (
+			_toolCallId: string,
+			{ path, offset, limit }: { path: string; offset?: number; limit?: number },
+			signal?: AbortSignal,
+		) => {
+			const absolutePath = resolvePath(workingDirectory, resolveReadPath(path));
 
 		return new Promise<{ content: (TextContent | ImageContent)[]; details: ReadToolDetails | undefined }>(
 			(resolve, reject) => {
@@ -164,5 +165,6 @@ export const readTool: AgentTool<typeof readSchema> = {
 				})();
 			},
 		);
-	},
-};
+		},
+	};
+}
