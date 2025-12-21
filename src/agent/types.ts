@@ -1,4 +1,4 @@
-import { Api, BaseAssistantEvent, Content, Message, Model, OptionsForApi, Tool, ToolResultMessage,  } from "../types.js";
+import { Api, BaseAssistantEvent, Content, Message, Model, OptionsForApi, Tool, ToolResultMessage, } from "../types.js";
 import type { Static, TSchema } from "@sinclair/typebox";
 
 
@@ -38,8 +38,8 @@ export interface AgentTool<TParameters extends TSchema = TSchema, TDetails = any
 }
 
 export interface Provider<TApi extends Api> {
-    model: Model<TApi>;
-    providerOptions: OptionsForApi<TApi>
+	model: Model<TApi>;
+	providerOptions: OptionsForApi<TApi>
 }
 
 // Queued message with optional LLM representation
@@ -49,11 +49,11 @@ export interface QueuedMessage<TApp = Message> {
 }
 
 export interface AgentState {
-    systemPrompt?: string;
-    provider: Provider<Api>;
-    messages: Message[];
-    tools: AgentTool[]
-    isStreaming: boolean;
+	systemPrompt?: string;
+	provider: Provider<Api>;
+	messages: Message[];
+	tools: AgentTool[]
+	isStreaming: boolean;
 	pendingToolCalls: Set<string>;
 	error?: string;
 }
@@ -75,7 +75,7 @@ export type AgentEvent =
 	// Emitted when a turn starts. A turn can emit an optional user message (initial prompt), an assistant message (response) and multiple tool result messages
 	| { type: "turn_start" }
 	// Emitted when a user, assistant or tool result message starts
-	| { type: "message_start", messageType: 'user' | 'assistant' | 'toolResult' | 'custom', messageId: string }
+	| { type: "message_start", messageType: 'user' | 'assistant' | 'toolResult' | 'custom', messageId: string, message: Message }
 	// Emitted when a user, assistant or tool result message updates
 	| { type: "message_update", messageType: 'assistant' | 'custom', messageId: string, message: Message | BaseAssistantEvent<Api> }
 	// Emitted when a user, assistant or tool result message ends
@@ -84,22 +84,22 @@ export type AgentEvent =
 	| { type: "tool_execution_start"; toolCallId: string; toolName: string; args: any }
 	// Emitted when a tool execution produces output (streaming)
 	| {
-        type: "tool_execution_update";
-        toolCallId: string;
-        toolName: string;
-        args: any;
-        partialResult: AgentToolResult<any>
-      }
+		type: "tool_execution_update";
+		toolCallId: string;
+		toolName: string;
+		args: any;
+		partialResult: AgentToolResult<any>
+	}
 	// Emitted when a tool execution completes
 	| {
-        type: "tool_execution_end";
-        toolCallId: string;
-        toolName: string;
-        result: AgentToolResult<any>;
-        isError: boolean;
-      }
+		type: "tool_execution_end";
+		toolCallId: string;
+		toolName: string;
+		result: AgentToolResult<any>;
+		isError: boolean;
+	}
 	// Emitted when a full turn completes
-	| { type: "turn_end"}
+	| { type: "turn_end" }
 	// Emitted when the agent has completed all its turns. All messages from every turn are
 	// contained in messages, which can be appended to the context
-	| { type: "agent_end", agentMessages: Message[]};
+	| { type: "agent_end", agentMessages: Message[] };

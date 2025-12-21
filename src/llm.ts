@@ -1,36 +1,38 @@
 import { completeGoogle, GoogleProviderOptions, streamGoogle } from "./providers/google/index.js";
+import { getMockGoogleMessage } from "./providers/google/utils.js";
 import { completeOpenAI, OpenAIProviderOptions, streamOpenAI } from "./providers/openai/index.js";
+import { getMockOpenaiMessage } from "./providers/openai/utils.js";
 import { Model, Api, Context, OptionsForApi, BaseAssistantMessage } from "./types.js";
 import { AssistantMessageEventStream } from "./utils/event-stream.js";
 import { generateUUID } from "./utils/uuid.js";
 
 const envMap: Record<Api, string> = {
-	openai: "OPENAI_API_KEY",
-	google: "GEMINI_API_KEY",
+    openai: "OPENAI_API_KEY",
+    google: "GEMINI_API_KEY",
 };
 
 
-export function getApiKeyFromEnv(api: Api){
+export function getApiKeyFromEnv(api: Api) {
     const envVar = envMap[api]
     return process.env[envVar]
 }
 
 
 export async function complete<TApi extends Api>(
-	model: Model<TApi>,
-	context: Context,
-	options?: OptionsForApi<TApi>,
+    model: Model<TApi>,
+    context: Context,
+    options?: OptionsForApi<TApi>,
     id?: string
 ): Promise<BaseAssistantMessage<TApi>> {
 
     // Type-safe apiKey extraction - works because all provider options have apiKey
     const apiKey = (options as any)?.apiKey ?? getApiKeyFromEnv(model.api);
     if (!apiKey) {
-		throw new Error(`No API key for provider: ${model.api}`);
+        throw new Error(`No API key for provider: ${model.api}`);
     }
 
-	// Ensure providerOptions has required apiKey
-	const providerOptions = { ...options, apiKey } as OptionsForApi<TApi>;
+    // Ensure providerOptions has required apiKey
+    const providerOptions = { ...options, apiKey } as OptionsForApi<TApi>;
     const messageId = id ?? generateUUID();
 
     switch (model.api) {
@@ -56,20 +58,20 @@ export async function complete<TApi extends Api>(
 }
 
 export function stream<TApi extends Api>(
-	model: Model<TApi>,
-	context: Context,
-	options?: OptionsForApi<TApi>,
+    model: Model<TApi>,
+    context: Context,
+    options?: OptionsForApi<TApi>,
     id?: string
 ): AssistantMessageEventStream<TApi> {
 
     // Type-safe apiKey extraction - works because all provider options have apiKey
     const apiKey = (options as any)?.apiKey ?? getApiKeyFromEnv(model.api);
     if (!apiKey) {
-		throw new Error(`No API key for provider: ${model.api}`);
+        throw new Error(`No API key for provider: ${model.api}`);
     }
 
-	// Ensure providerOptions has required apiKey
-	const providerOptions = { ...options, apiKey } as OptionsForApi<TApi>;
+    // Ensure providerOptions has required apiKey
+    const providerOptions = { ...options, apiKey } as OptionsForApi<TApi>;
     const messageId = id ?? generateUUID();
 
     switch (model.api) {
@@ -92,41 +94,70 @@ export function stream<TApi extends Api>(
             throw new Error(`Unhandled API: ${_exhaustive}`);
         }
     }
+}
 
+export function getMockMessage(model: Model<Api>): BaseAssistantMessage<Api> {
+    const messageId = generateUUID();
+    let message;
+    if (model.api === 'openai') {
+        message = getMockOpenaiMessage()
+    } else if (model.api === 'google') {
+        message = getMockGoogleMessage()
+    }
+    const baseMessage: BaseAssistantMessage<Api> = {
+        role: 'assistant',
+        message: message!,
+        api: model.api,
+        id: messageId,
+        model: model,
+        timestamp: Date.now(),
+        duration: 0,
+        stopReason: 'stop',
+        content: [],
+        usage: {
+            input: 0,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 0,
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 }
+        }
+    }
+    return baseMessage
 }
 
 export interface LLMClient {
-	complete<TApi extends Api>(
-		model: Model<TApi>,
-		context: Context,
-		options?: OptionsForApi<TApi>,
-		id?: string
-	): Promise<BaseAssistantMessage<TApi>>;
+    complete<TApi extends Api>(
+        model: Model<TApi>,
+        context: Context,
+        options?: OptionsForApi<TApi>,
+        id?: string
+    ): Promise<BaseAssistantMessage<TApi>>;
 
-	stream<TApi extends Api>(
-		model: Model<TApi>,
-		context: Context,
-		options?: OptionsForApi<TApi>,
-		id?: string
-	): AssistantMessageEventStream<TApi>;
+    stream<TApi extends Api>(
+        model: Model<TApi>,
+        context: Context,
+        options?: OptionsForApi<TApi>,
+        id?: string
+    ): AssistantMessageEventStream<TApi>;
 }
 
 export class DefaultLLMClient implements LLMClient {
-	async complete<TApi extends Api>(
-		model: Model<TApi>,
-		context: Context,
-		options?: OptionsForApi<TApi>,
-		id?: string
-	): Promise<BaseAssistantMessage<TApi>> {
-		return complete(model, context, options, id);
-	}
+    async complete<TApi extends Api>(
+        model: Model<TApi>,
+        context: Context,
+        options?: OptionsForApi<TApi>,
+        id?: string
+    ): Promise<BaseAssistantMessage<TApi>> {
+        return complete(model, context, options, id);
+    }
 
-	stream<TApi extends Api>(
-		model: Model<TApi>,
-		context: Context,
-		options?: OptionsForApi<TApi>,
-		id?: string
-	): AssistantMessageEventStream<TApi> {
-		return stream(model, context, options, id);
-	}
+    stream<TApi extends Api>(
+        model: Model<TApi>,
+        context: Context,
+        options?: OptionsForApi<TApi>,
+        id?: string
+    ): AssistantMessageEventStream<TApi> {
+        return stream(model, context, options, id);
+    }
 }

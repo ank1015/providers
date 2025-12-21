@@ -7,21 +7,21 @@ import type { TSchema } from "@sinclair/typebox";
 
 
 export function createClient(model: Model<"google">, apiKey?: string): GoogleGenAI {
-	if (!apiKey) {
-		if (!process.env.GEMINI_API_KEY) {
-			throw new Error(
-				"Gemini API key is required. Set GEMINI_API_KEY environment variable or pass it as an argument.",
-			);
-		}
-		apiKey = process.env.GEMINI_API_KEY;
-	}
-	return new GoogleGenAI({
-		apiKey,
-		httpOptions: model.headers ? { headers: model.headers } : undefined,
-	});
+    if (!apiKey) {
+        if (!process.env.GEMINI_API_KEY) {
+            throw new Error(
+                "Gemini API key is required. Set GEMINI_API_KEY environment variable or pass it as an argument.",
+            );
+        }
+        apiKey = process.env.GEMINI_API_KEY;
+    }
+    return new GoogleGenAI({
+        apiKey,
+        httpOptions: model.headers ? { headers: model.headers } : undefined,
+    });
 }
 
-export function getResponseAssistantResponse(response: GenerateContentResponse): AssistantResponse{
+export function getResponseAssistantResponse(response: GenerateContentResponse): AssistantResponse {
     const assistantResponse: AssistantResponse = [];
 
     // Process candidates
@@ -41,14 +41,14 @@ export function getResponseAssistantResponse(response: GenerateContentResponse):
                         } else {
                             assistantResponse.push({
                                 type: 'response',
-                                content: [{type: 'text', content: part.text}]
+                                content: [{ type: 'text', content: part.text }]
                             });
                         }
                     }
 
-                    if(part.inlineData){
+                    if (part.inlineData) {
                         const imageData = part.inlineData.data;
-                        if(imageData){
+                        if (imageData) {
                             assistantResponse.push({
                                 type: 'response',
                                 content: [{
@@ -80,7 +80,7 @@ export function getResponseAssistantResponse(response: GenerateContentResponse):
     return assistantResponse
 }
 
-export function getAssistantStopReason(response: GenerateContentResponse): StopReason{
+export function getAssistantStopReason(response: GenerateContentResponse): StopReason {
 
     let finishReason: FinishReason | undefined;
 
@@ -100,12 +100,12 @@ export function getAssistantStopReason(response: GenerateContentResponse): StopR
     return stopReason;
 }
 
-export function getResponseUsage(response: GenerateContentResponse, model: Model<'google'>): Usage{
+export function getResponseUsage(response: GenerateContentResponse, model: Model<'google'>): Usage {
     // Extract usage information
     const usage: Usage = {
         input: response.usageMetadata?.promptTokenCount || 0,
         output: (response.usageMetadata?.candidatesTokenCount || 0) +
-                (response.usageMetadata?.thoughtsTokenCount || 0),
+            (response.usageMetadata?.thoughtsTokenCount || 0),
         cacheRead: response.usageMetadata?.cachedContentTokenCount || 0,
         cacheWrite: 0,
         totalTokens: response.usageMetadata?.totalTokenCount || 0,
@@ -115,42 +115,42 @@ export function getResponseUsage(response: GenerateContentResponse, model: Model
     return usage;
 }
 
-export function buildParams(model: Model<"google">, context: Context, options: GoogleProviderOptions){
+export function buildParams(model: Model<"google">, context: Context, options: GoogleProviderOptions) {
 
     const contents = buildGoogleMessages(model, context);
 
-	const {apiKey, signal, ...googleOptions} = options
+    const { apiKey, signal, ...googleOptions } = options
 
-	const config: GenerateContentConfig = {
-		...googleOptions
-	}
+    const config: GenerateContentConfig = {
+        ...googleOptions
+    }
 
-    if(options?.signal){
+    if (options?.signal) {
         config.abortSignal = options.signal;
     }
 
-    if(context.systemPrompt){
+    if (context.systemPrompt) {
         config.systemInstruction = sanitizeSurrogates(context.systemPrompt);
     }
 
     const tools: ToolListUnion = []
 
-    if(context.tools && model.tools.includes('function_calling')){
+    if (context.tools && model.tools.includes('function_calling')) {
         const convertedTools = convertTools(context.tools);
-        for (const convertedTool of convertedTools){
+        for (const convertedTool of convertedTools) {
             tools.push(convertedTool);
         }
     }
 
-    if(googleOptions.tools){
-        for (const optionTool of googleOptions.tools){
+    if (googleOptions.tools) {
+        for (const optionTool of googleOptions.tools) {
             tools.push(optionTool)
         }
     }
 
-    if(tools.length > 0) config.tools = tools;
+    if (tools.length > 0) config.tools = tools;
 
-	const params: GenerateContentParameters = {
+    const params: GenerateContentParameters = {
         model: model.id,
         contents,
         config
@@ -159,22 +159,22 @@ export function buildParams(model: Model<"google">, context: Context, options: G
     return params;
 }
 
-export function buildGoogleMessages(model: Model<'google'> ,context: Context): ContentListUnion{
+export function buildGoogleMessages(model: Model<'google'>, context: Context): ContentListUnion {
     const contents: ContentListUnion = []
 
-    for (let i=0; i< context.messages.length; i++){
+    for (let i = 0; i < context.messages.length; i++) {
         const message = context.messages[i];
 
-        if(message.role === 'user'){
+        if (message.role === 'user') {
             const parts: Part[] = [];
-            for(let p=0; p<message.content.length; p++){
+            for (let p = 0; p < message.content.length; p++) {
                 const messageContent = message.content[p];
-                if(messageContent.type === 'text'){
+                if (messageContent.type === 'text') {
                     parts.push({
                         text: sanitizeSurrogates(messageContent.content)
                     })
                 }
-                if(messageContent.type === 'image' && model.input.includes("image")){
+                if (messageContent.type === 'image' && model.input.includes("image")) {
                     parts.push({
                         inlineData: {
                             mimeType: messageContent.mimeType,
@@ -182,7 +182,7 @@ export function buildGoogleMessages(model: Model<'google'> ,context: Context): C
                         }
                     })
                 }
-                if(messageContent.type === 'file' && model.input.includes("file")){
+                if (messageContent.type === 'file' && model.input.includes("file")) {
                     parts.push({
                         inlineData: {
                             mimeType: messageContent.mimeType,
@@ -197,15 +197,15 @@ export function buildGoogleMessages(model: Model<'google'> ,context: Context): C
             })
         }
 
-        if(message.role === 'toolResult'){
-            const parts : Part[] = [];
+        if (message.role === 'toolResult') {
+            const parts: Part[] = [];
             let textRes = '(see attached:)';
-            for(let p=0; p<message.content.length; p++){
+            for (let p = 0; p < message.content.length; p++) {
                 const messageContent = message.content[p];
-                if(messageContent.type === 'text'){
+                if (messageContent.type === 'text') {
                     textRes = messageContent.content
                 }
-                if(messageContent.type === 'image' && model.input.includes("image")){
+                if (messageContent.type === 'image' && model.input.includes("image")) {
                     parts.push({
                         inlineData: {
                             mimeType: messageContent.mimeType,
@@ -213,7 +213,7 @@ export function buildGoogleMessages(model: Model<'google'> ,context: Context): C
                         }
                     })
                 }
-                if(messageContent.type === 'file' && model.input.includes("file")){
+                if (messageContent.type === 'file' && model.input.includes("file")) {
                     parts.push({
                         inlineData: {
                             mimeType: messageContent.mimeType,
@@ -240,20 +240,20 @@ export function buildGoogleMessages(model: Model<'google'> ,context: Context): C
             })
         }
 
-        if(message.role === 'assistant'){
-            if(message.model.api === 'google'){
+        if (message.role === 'assistant') {
+            if (message.model.api === 'google') {
                 const baseMessage = message as BaseAssistantMessage<'google'>
-                if(baseMessage.message.candidates){
-                    for(let p=0; p< baseMessage.message.candidates?.length; p++){
+                if (baseMessage.message.candidates) {
+                    for (let p = 0; p < baseMessage.message.candidates?.length; p++) {
                         const candidate = baseMessage.message.candidates[p];
-                        if(candidate.content){
+                        if (candidate.content) {
                             contents.push(candidate.content)
                         }
                     }
                 }
             }
             // TODO Implement other provider conversions
-            else{
+            else {
                 throw new Error(
                     `Cannot convert ${message.model.api} assistant message to ${model.api} format. ` +
                     `Cross-provider conversion for ${message.model.api} → ${model.api} is not yet implemented.`
@@ -278,114 +278,124 @@ type JSONSchemaValue = TSchema | { [key: string]: JSONSchemaValue } | JSONSchema
  * - Recursively processes nested objects and arrays
  */
 export function transformSchemaForGoogle(schema: JSONSchemaValue): JSONSchemaValue {
-	if (!schema || typeof schema !== 'object') {
-		return schema;
-	}
+    if (!schema || typeof schema !== 'object') {
+        return schema;
+    }
 
-	// Handle arrays
-	if (Array.isArray(schema)) {
-		return schema.map(transformSchemaForGoogle);
-	}
+    // Handle arrays
+    if (Array.isArray(schema)) {
+        return schema.map(transformSchemaForGoogle);
+    }
 
-	const transformed: Record<string, JSONSchemaValue> = {};
+    const transformed: Record<string, JSONSchemaValue> = {};
 
-	// Handle const keyword - convert to enum
-	if ('const' in schema) {
-		transformed.enum = [schema.const];
-		// Copy over other properties except const
-		for (const key in schema) {
-			if (key !== 'const') {
-				transformed[key] = schema[key];
-			}
-		}
-		return transformed;
-	}
+    // Handle const keyword - convert to enum
+    if ('const' in schema) {
+        transformed.enum = [schema.const];
+        // Copy over other properties except const
+        for (const key in schema) {
+            if (key !== 'const') {
+                transformed[key] = schema[key];
+            }
+        }
+        return transformed;
+    }
 
-	// Handle anyOf with const values - convert to enum
-	if ('anyOf' in schema && Array.isArray(schema.anyOf) && schema.anyOf.length > 0) {
-		const allConst = schema.anyOf.every((item: any) => item && typeof item === 'object' && 'const' in item);
-		if (allConst) {
-			// Extract all const values into a single enum
-			transformed.enum = schema.anyOf.map((item: any) => item.const);
-			// Copy over other properties from the parent schema
-			for (const key in schema) {
-				if (key !== 'anyOf') {
-					transformed[key] = schema[key];
-				}
-			}
-			// Copy type and other properties from the first anyOf item if not already set
-			if (schema.anyOf.length > 0) {
-				const firstItem = schema.anyOf[0];
-				for (const key in firstItem) {
-					if (key !== 'const' && !(key in transformed)) {
-						transformed[key] = firstItem[key];
-					}
-				}
-			}
-			return transformed;
-		}
-	}
+    // Handle anyOf with const values - convert to enum
+    if ('anyOf' in schema && Array.isArray(schema.anyOf) && schema.anyOf.length > 0) {
+        const allConst = schema.anyOf.every((item: any) => item && typeof item === 'object' && 'const' in item);
+        if (allConst) {
+            // Extract all const values into a single enum
+            transformed.enum = schema.anyOf.map((item: any) => item.const);
+            // Copy over other properties from the parent schema
+            for (const key in schema) {
+                if (key !== 'anyOf') {
+                    transformed[key] = schema[key];
+                }
+            }
+            // Copy type and other properties from the first anyOf item if not already set
+            if (schema.anyOf.length > 0) {
+                const firstItem = schema.anyOf[0];
+                for (const key in firstItem) {
+                    if (key !== 'const' && !(key in transformed)) {
+                        transformed[key] = firstItem[key];
+                    }
+                }
+            }
+            return transformed;
+        }
+    }
 
-	// Recursively process all properties
-	for (const key in schema) {
-		if (key === 'properties' && typeof schema.properties === 'object') {
-			// Recursively transform each property
-			transformed.properties = {};
-			for (const propKey in schema.properties) {
-				transformed.properties[propKey] = transformSchemaForGoogle(schema.properties[propKey]);
-			}
-		} else if (key === 'items' && schema.items) {
-			// Recursively transform array items schema
-			transformed.items = transformSchemaForGoogle(schema.items);
-		} else if (key === 'anyOf' || key === 'oneOf' || key === 'allOf') {
-			// Recursively transform union/intersection schemas
-			transformed[key] = Array.isArray(schema[key])
-				? schema[key].map(transformSchemaForGoogle)
-				: transformSchemaForGoogle(schema[key]);
-		} else {
-			// Copy other properties as-is
-			transformed[key] = schema[key];
-		}
-	}
+    // Recursively process all properties
+    for (const key in schema) {
+        if (key === 'properties' && typeof schema.properties === 'object') {
+            // Recursively transform each property
+            transformed.properties = {};
+            for (const propKey in schema.properties) {
+                transformed.properties[propKey] = transformSchemaForGoogle(schema.properties[propKey]);
+            }
+        } else if (key === 'items' && schema.items) {
+            // Recursively transform array items schema
+            transformed.items = transformSchemaForGoogle(schema.items);
+        } else if (key === 'anyOf' || key === 'oneOf' || key === 'allOf') {
+            // Recursively transform union/intersection schemas
+            transformed[key] = Array.isArray(schema[key])
+                ? schema[key].map(transformSchemaForGoogle)
+                : transformSchemaForGoogle(schema[key]);
+        } else {
+            // Copy other properties as-is
+            transformed[key] = schema[key];
+        }
+    }
 
-	return transformed;
+    return transformed;
 }
 
 export function convertTools(tools: readonly Tool[]): any[] {
-	return [
-		{
-			functionDeclarations: tools.map((tool) => ({
-				name: tool.name,
-				description: tool.description,
-				parameters: transformSchemaForGoogle(tool.parameters),
-			})),
-		},
-	];
+    return [
+        {
+            functionDeclarations: tools.map((tool) => ({
+                name: tool.name,
+                description: tool.description,
+                parameters: transformSchemaForGoogle(tool.parameters),
+            })),
+        },
+    ];
 }
 
 export function mapStopReason(reason: FinishReason): StopReason {
-	switch (reason) {
-		case FinishReason.STOP:
-			return "stop";
-		case FinishReason.MAX_TOKENS:
-			return "length";
-		case FinishReason.BLOCKLIST:
-		case FinishReason.PROHIBITED_CONTENT:
-		case FinishReason.SPII:
-		case FinishReason.SAFETY:
-		case FinishReason.IMAGE_SAFETY:
-		case FinishReason.IMAGE_PROHIBITED_CONTENT:
-		case FinishReason.RECITATION:
-		case FinishReason.FINISH_REASON_UNSPECIFIED:
-		case FinishReason.OTHER:
-		case FinishReason.LANGUAGE:
-		case FinishReason.MALFORMED_FUNCTION_CALL:
-		case FinishReason.UNEXPECTED_TOOL_CALL:
-		case FinishReason.NO_IMAGE:
-			return "error";
-		default: {
-			const _exhaustive: never = reason;
-			throw new Error(`Unhandled stop reason: ${_exhaustive}`);
-		}
-	}
+    switch (reason) {
+        case FinishReason.STOP:
+            return "stop";
+        case FinishReason.MAX_TOKENS:
+            return "length";
+        case FinishReason.BLOCKLIST:
+        case FinishReason.PROHIBITED_CONTENT:
+        case FinishReason.SPII:
+        case FinishReason.SAFETY:
+        case FinishReason.IMAGE_SAFETY:
+        case FinishReason.IMAGE_PROHIBITED_CONTENT:
+        case FinishReason.RECITATION:
+        case FinishReason.FINISH_REASON_UNSPECIFIED:
+        case FinishReason.OTHER:
+        case FinishReason.LANGUAGE:
+        case FinishReason.MALFORMED_FUNCTION_CALL:
+        case FinishReason.UNEXPECTED_TOOL_CALL:
+        case FinishReason.NO_IMAGE:
+            return "error";
+        default: {
+            const _exhaustive: never = reason;
+            throw new Error(`Unhandled stop reason: ${_exhaustive}`);
+        }
+    }
+}
+
+export function getMockGoogleMessage(): GenerateContentResponse {
+    return {
+        text: '',
+        data: '',
+        functionCalls: [],
+        executableCode: '',
+        codeExecutionResult: ''
+    }
 }

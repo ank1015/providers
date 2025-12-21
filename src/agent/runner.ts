@@ -1,6 +1,6 @@
 import { Api, AssistantResponse, AssistantToolCall, BaseAssistantMessage, Message, OptionsForApi, ToolResultMessage } from "../types.js";
 import { AgentEvent, AgentLoopConfig, AgentTool, AgentToolResult, QueuedMessage } from "./types.js";
-import { LLMClient } from "../llm.js";
+import { getMockMessage, LLMClient } from "../llm.js";
 import { generateUUID } from "../utils/uuid.js";
 import { validateToolArguments } from "../utils/validation.js";
 import { buildToolResultMessage } from "./utils.js";
@@ -74,7 +74,7 @@ export class DefaultAgentRunner implements AgentRunner {
             if (queuedMessages.length > 0) {
                 for (const { llm } of queuedMessages) {
                     if (llm) {
-                        emit({ type: 'message_start', messageId: llm.id, messageType: llm.role });
+                        emit({ type: 'message_start', messageId: llm.id, messageType: llm.role, message: llm });
                         emit({ type: 'message_end', messageId: llm.id, messageType: llm.role, message: llm });
                         updatedMessages.push(llm);
                         newMessages.push(llm);
@@ -139,7 +139,8 @@ export class DefaultAgentRunner implements AgentRunner {
         emit: (event: AgentEvent) => void
     ): Promise<BaseAssistantMessage<TApi>> {
         const assistantMessageId = generateUUID();
-        emit({ type: 'message_start', messageId: assistantMessageId, messageType: 'assistant' });
+        const initialMessage = getMockMessage(config.provider.model);
+        emit({ type: 'message_start', messageId: assistantMessageId, messageType: 'assistant', message: initialMessage });
 
         if (this.streamAssistantMessage) {
             const assistantStream = this.client.stream(
@@ -228,7 +229,7 @@ export class DefaultAgentRunner implements AgentRunner {
             const toolResultMessage = buildToolResultMessage(toolCall, result, isError, errorDetails);
             results.push(toolResultMessage);
 
-            emit({ type: 'message_start', messageId: toolResultMessage.id, messageType: 'toolResult' });
+            emit({ type: 'message_start', messageId: toolResultMessage.id, messageType: 'toolResult', message: toolResultMessage });
             emit({ type: 'message_end', messageId: toolResultMessage.id, messageType: 'toolResult', message: toolResultMessage });
         }
 

@@ -232,13 +232,13 @@ export class Conversation {
 	async addCustomMessage(message: Record<string, any>) {
 		const messageId = generateUUID();
 		// emit message start event
-		this.emit({ type: 'message_start', messageId, messageType: 'custom' });
 		const customMessage: CustomMessage = {
 			role: 'custom',
 			id: messageId,
 			content: message,
 			timestamp: Date.now()
 		}
+		this.emit({ type: 'message_start', messageId, messageType: 'custom', message: customMessage });
 		this.emit({ type: 'message_update', messageId, messageType: 'custom', message: customMessage });
 		await this.waitForIdle();
 		this.appendMessage(customMessage);
@@ -332,7 +332,7 @@ export class Conversation {
 			const updatedMessages = [...llmMessages, userMessage];
 			this.emit({ type: 'agent_start' });
 			this.emit({ type: 'turn_start' });
-			this.emit({ type: 'message_start', messageId: userMessage.id, messageType: 'user' });
+			this.emit({ type: 'message_start', messageId: userMessage.id, messageType: 'user', message: userMessage });
 			this.emit({ type: 'message_end', messageId: userMessage.id, messageType: 'user', message: userMessage });
 			this.appendMessage(userMessage);
 

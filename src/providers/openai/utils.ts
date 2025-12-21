@@ -1,28 +1,28 @@
 import OpenAI from "openai";
 import { AssistantResponse, BaseAssistantMessage, Context, Model, StopReason, Tool, Usage } from "../../types.js"
-import type {Response, Tool as OpenAITool, ResponseInput, ResponseInputMessageContentList, ResponseFunctionCallOutputItemList, ResponseInputItem, ResponseCreateParamsNonStreaming} from "openai/resources/responses/responses.js";
+import type { Response, Tool as OpenAITool, ResponseInput, ResponseInputMessageContentList, ResponseFunctionCallOutputItemList, ResponseInputItem, ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses.js";
 import { sanitizeSurrogates } from "../../utils/sanitize-unicode.js";
 import { calculateCost } from "../../models.js";
 import { OpenAIProviderOptions } from "./types.js";
 
 export function createClient(model: Model<"openai">, apiKey?: string) {
-	if (!apiKey) {
-		if (!process.env.OPENAI_API_KEY) {
-			throw new Error(
-				"OpenAI API key is required. Set OPENAI_API_KEY environment variable or pass it as an argument.",
-			);
-		}
-		apiKey = process.env.OPENAI_API_KEY;
-	}
-	return new OpenAI({
-		apiKey,
-		baseURL: model.baseUrl,
-		dangerouslyAllowBrowser: true,
-		defaultHeaders: model.headers,
-	});
+    if (!apiKey) {
+        if (!process.env.OPENAI_API_KEY) {
+            throw new Error(
+                "OpenAI API key is required. Set OPENAI_API_KEY environment variable or pass it as an argument.",
+            );
+        }
+        apiKey = process.env.OPENAI_API_KEY;
+    }
+    return new OpenAI({
+        apiKey,
+        baseURL: model.baseUrl,
+        dangerouslyAllowBrowser: true,
+        defaultHeaders: model.headers,
+    });
 }
 
-export function getResponseAssistantResponse(response: Response): AssistantResponse{
+export function getResponseAssistantResponse(response: Response): AssistantResponse {
     const assistantResponse: AssistantResponse = [];
 
     if (response.output) {
@@ -53,7 +53,7 @@ export function getResponseAssistantResponse(response: Response): AssistantRespo
                         }]
                     });
                 }
-            } else if(item.type === 'image_generation_call' && item.result){
+            } else if (item.type === 'image_generation_call' && item.result) {
                 assistantResponse.push({
                     type: 'response',
                     content: [{
@@ -92,66 +92,66 @@ export function getResponseUsage(response: Response, model: Model<'openai'>): Us
     return usage;
 }
 
-export function buildParams(model: Model<"openai">, context: Context, options: OpenAIProviderOptions){
-	const messages = buildOpenAIMessages(model, context);
+export function buildParams(model: Model<"openai">, context: Context, options: OpenAIProviderOptions) {
+    const messages = buildOpenAIMessages(model, context);
 
-	const {apiKey, signal, ...openaiOptions} = options
-	const params: ResponseCreateParamsNonStreaming = {
-		...openaiOptions, 
+    const { apiKey, signal, ...openaiOptions } = options
+    const params: ResponseCreateParamsNonStreaming = {
+        ...openaiOptions,
         stream: false
-	}
+    }
 
-	params.model = model.id;
-	params.input = messages
+    params.model = model.id;
+    params.input = messages
 
     const tools: OpenAITool[] = []
 
-	if(context.tools && model.tools.includes('function_calling')){
+    if (context.tools && model.tools.includes('function_calling')) {
         const convertedTools = convertTools(context.tools)
-        for(const convertedTool of convertedTools){
+        for (const convertedTool of convertedTools) {
             tools.push(convertedTool)
         }
-	}
+    }
 
-    if(openaiOptions.tools){
-        for(const optionTool of openaiOptions.tools){
+    if (openaiOptions.tools) {
+        for (const optionTool of openaiOptions.tools) {
             tools.push(optionTool)
         }
     }
 
     params.tools = tools;
-	return params;
+    return params;
 }
 
-export function buildOpenAIMessages(model: Model<'openai'> ,context: Context): ResponseInput {
+export function buildOpenAIMessages(model: Model<'openai'>, context: Context): ResponseInput {
     const openAIMessages: ResponseInput = [];
-    if(context.systemPrompt){
+    if (context.systemPrompt) {
         openAIMessages.push({
             role: 'developer',
             content: sanitizeSurrogates(context.systemPrompt)
         })
     };
 
-    for(const message of context.messages){
+    for (const message of context.messages) {
 
-        if(message.role === 'user'){
+        if (message.role === 'user') {
             const contents: ResponseInputMessageContentList = [];
-            for (let p=0; p< message.content.length; p++){
+            for (let p = 0; p < message.content.length; p++) {
                 const content = message.content[p];
-                if(content.type === 'text'){
+                if (content.type === 'text') {
                     contents.push({
                         type: 'input_text',
                         text: sanitizeSurrogates(content.content)
                     })
                 }
-                if(content.type === 'image' && model.input.includes("image")){
+                if (content.type === 'image' && model.input.includes("image")) {
                     contents.push({
                         type: 'input_image',
                         detail: 'auto',
                         image_url: `data:${content.mimeType};base64,${content.data}`
                     })
                 }
-                if(content.type === 'file'  && model.input.includes("file")){
+                if (content.type === 'file' && model.input.includes("file")) {
                     contents.push({
                         type: 'input_file',
                         filename: content.filename,
@@ -166,14 +166,14 @@ export function buildOpenAIMessages(model: Model<'openai'> ,context: Context): R
         }
 
         // normalize for tool results
-        if(message.role === 'toolResult'){
+        if (message.role === 'toolResult') {
             const toolOutputs: ResponseFunctionCallOutputItemList = []
             let hasText = false;
             let hasImg = false;
             let hasFile = false;
-            for (let p=0; p< message.content.length; p++){
+            for (let p = 0; p < message.content.length; p++) {
                 const content = message.content[p];
-                if(content.type === 'text'){
+                if (content.type === 'text') {
                     // Prefix error messages so LLM knows the tool failed
                     const textContent = message.isError
                         ? `[TOOL ERROR] ${content.content}`
@@ -184,7 +184,7 @@ export function buildOpenAIMessages(model: Model<'openai'> ,context: Context): R
                     })
                     hasText = true;
                 }
-                if(content.type === 'image'  && model.input.includes("image")){
+                if (content.type === 'image' && model.input.includes("image")) {
                     toolOutputs.push({
                         type: 'input_image',
                         detail: 'auto',
@@ -192,7 +192,7 @@ export function buildOpenAIMessages(model: Model<'openai'> ,context: Context): R
                     })
                     hasImg = true
                 }
-                if(content.type === 'file'  && model.input.includes("file")){
+                if (content.type === 'file' && model.input.includes("file")) {
                     toolOutputs.push({
                         type: 'input_file',
                         file_data: `data:${content.mimeType};base64,${content.data}`
@@ -200,7 +200,7 @@ export function buildOpenAIMessages(model: Model<'openai'> ,context: Context): R
                     hasFile = true
                 }
             }
-            if(!hasText && (hasImg || hasFile)){
+            if (!hasText && (hasImg || hasFile)) {
                 toolOutputs.push({
                     type: 'input_text',
                     text: message.isError ? '[TOOL ERROR] (see attached)' : '(see attached)'
@@ -215,18 +215,18 @@ export function buildOpenAIMessages(model: Model<'openai'> ,context: Context): R
         }
 
         // normalize for Assistant message
-        if(message.role === 'assistant'){
-            if(message.model.api === 'openai'){
+        if (message.role === 'assistant') {
+            if (message.model.api === 'openai') {
                 const baseMessage = message as BaseAssistantMessage<'openai'>
-                for(let p=0; p<baseMessage.message.output.length; p++){
+                for (let p = 0; p < baseMessage.message.output.length; p++) {
                     const outputPart = baseMessage.message.output[p];
-                    if(outputPart.type === 'function_call' || outputPart.type === 'message' || outputPart.type === 'reasoning' ){
+                    if (outputPart.type === 'function_call' || outputPart.type === 'message' || outputPart.type === 'reasoning') {
                         openAIMessages.push(outputPart);
                     }
                 }
             }
             // TODO Implement other provider conversions
-            else{
+            else {
                 throw new Error(
                     `Cannot convert ${message.model.api} assistant message to ${model.api} format. ` +
                     `Cross-provider conversion for ${message.model.api} → ${model.api} is not yet implemented.`
@@ -240,32 +240,69 @@ export function buildOpenAIMessages(model: Model<'openai'> ,context: Context): R
 }
 
 export function convertTools(tools: readonly Tool[]): OpenAITool[] {
-	return tools.map((tool) => ({
-		type: "function",
-		name: tool.name,
-		description: tool.description,
-		parameters: tool.parameters, // TypeBox already generates JSON Schema
-		strict: null,
-	}));
+    return tools.map((tool) => ({
+        type: "function",
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters, // TypeBox already generates JSON Schema
+        strict: null,
+    }));
 }
 
 export function mapStopReason(status: OpenAI.Responses.ResponseStatus | undefined): StopReason {
-	if (!status) return "stop";
-	switch (status) {
-		case "completed":
-			return "stop";
-		case "incomplete":
-			return "length";
-		case "failed":
-		case "cancelled":
-			return "error";
-		// These two are wonky ...
-		case "in_progress":
-		case "queued":
-			return "stop";
-		default: {
-			const _exhaustive: never = status;
-			throw new Error(`Unhandled stop reason: ${_exhaustive}`);
-		}
-	}
+    if (!status) return "stop";
+    switch (status) {
+        case "completed":
+            return "stop";
+        case "incomplete":
+            return "length";
+        case "failed":
+        case "cancelled":
+            return "error";
+        // These two are wonky ...
+        case "in_progress":
+        case "queued":
+            return "stop";
+        default: {
+            const _exhaustive: never = status;
+            throw new Error(`Unhandled stop reason: ${_exhaustive}`);
+        }
+    }
+}
+
+export function getMockOpenaiMessage(): Response {
+    return {
+        id: "resp_123",
+        object: "response",
+        created_at: 1740855869,
+        output_text: '',
+        status: "completed",
+        incomplete_details: null,
+        parallel_tool_calls: false,
+        error: null,
+        instructions: null,
+        max_output_tokens: null,
+        model: "gpt-4o-mini-2024-07-18",
+        output: [],
+        previous_response_id: null,
+        temperature: 1,
+        text: {},
+        tool_choice: "auto",
+        tools: [],
+        top_p: 1,
+        truncation: "disabled",
+        usage: {
+            input_tokens: 0,
+            output_tokens: 0,
+            output_tokens_details: {
+                reasoning_tokens: 0
+            },
+            input_tokens_details: {
+                cached_tokens: 0
+            },
+            total_tokens: 0
+        },
+        user: undefined,
+        metadata: {}
+    }
 }
