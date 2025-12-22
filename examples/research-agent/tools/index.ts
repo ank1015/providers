@@ -24,7 +24,8 @@ export function createResearchTools(workingDirectory: string) {
 
 	return {
 		// All research tools (filesystem + web)
-		researchTools: [searchTool, extractTool, writeTool, appendTool, readTool, lsTool, mkdirTool],
+		// researchTools: [searchTool, extractTool, writeTool, appendTool, readTool, lsTool, mkdirTool],
+		researchTools: [searchTool, extractTool, writeTool, appendTool, readTool, lsTool],
 
 		// Individual tool groups for flexibility
 		filesystemTools: [writeTool, appendTool, readTool, lsTool, mkdirTool],
