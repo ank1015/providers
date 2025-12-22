@@ -11,7 +11,7 @@ const searchSchema = Type.Object({
 export const searchTool: AgentTool<typeof searchSchema> = {
     name: "search",
     label: "search",
-    description: "Returns 8 web search results based on objective and search queries. Each search contains the url and excerpts from the url based on the objective.",
+    description: "Returns 5 web search results based on objective and search queries. Each search contains the url and excerpts from the url based on the objective.",
     parameters: searchSchema,
     execute: async (
         _toolCallId: string,
@@ -23,7 +23,7 @@ export const searchTool: AgentTool<typeof searchSchema> = {
         const search = await client.beta.search({
             objective,
             search_queries: queries,
-            max_results: 8,
+            max_results: 5,
             mode: 'agentic',
             excerpts: {
                 max_chars_per_result: 5000
