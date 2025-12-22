@@ -17,3 +17,5 @@ export * from './utils/validation.js';
 export * from './utils/overflow.js'
 export * from './utils/event-stream.js'
 export * from './utils/json-parse.js'
+
+export * from './agent/tools/index.js'

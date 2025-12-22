@@ -312,7 +312,7 @@ async function main() {
 	// Create log directory structure if saving (in project root)
 	if (saveMessages || saveEvents) {
 		const sessionId = randomUUID();
-		const logsDir = join(projectRoot, ".logs", "cli", sessionId);
+		const logsDir = join(projectRoot, ".logs", "coding", "cli", sessionId);
 
 		// Create directory
 		await mkdir(logsDir, { recursive: true });

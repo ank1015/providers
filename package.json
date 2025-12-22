@@ -2,9 +2,15 @@
 	"name": "@ank1015/providers",
 	"version": "0.0.2",
 	"type": "module",
-	"description": "LLM providers",
+	"description": "Multi-provider LLM SDK with native provider options support.",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
 	"files": [
 		"dist",
 		"README.md"
@@ -15,11 +21,29 @@
 		"start": "node dist/index.js",
 		"clean": "rm -rf dist",
 		"check": "biome check --write . && tsc --noEmit",
-		"test": "vitest --run"
+		"test": "vitest --run",
+		"prepublishOnly": "npm run check && npm run test && npm run build"
 	},
-	"keywords": [],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/ank1015/providers.git"
+	},
+	"keywords": [
+		"ai",
+		"llm",
+		"agent",
+		"openai",
+		"gemini",
+		"providers",
+		"sdk",
+		"autonomous"
+	],
 	"author": "ank1015",
 	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/ank1015/providers/issues"
+	},
+	"homepage": "https://github.com/ank1015/providers#readme",
 	"dependencies": {
 		"@anthropic-ai/sdk": "^0.71.0",
 		"@biomejs/biome": "^2.3.8",
