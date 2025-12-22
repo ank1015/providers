@@ -1,7 +1,7 @@
 import type { Model } from "./types.js";
 
 export const MODELS = {
-    openai: {
+	openai: {
 		"gpt-5.2": {
 			id: "gpt-5.2",
 			name: "GPT-5.2",
@@ -104,7 +104,7 @@ export const MODELS = {
 			maxTokens: 128000,
 			tools: ['function_calling'],
 		} satisfies Model<"openai">,
-    },
+	},
 	google: {
 		"gemini-3-pro-preview": {
 			id: "gemini-3-pro-preview",
@@ -131,9 +131,9 @@ export const MODELS = {
 			reasoning: true,
 			input: ["text", "image", "file"],
 			cost: {
-				input: 2,
-				output: 12,
-				cacheRead: 0.2,
+				input: 0.50,
+				output: 3,
+				cacheRead: 0.05,
 				cacheWrite: 0,
 			},
 			contextWindow: 1048576,
