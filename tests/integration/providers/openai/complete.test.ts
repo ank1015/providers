@@ -328,4 +328,180 @@ describe('OpenAI Complete Integration', () => {
 			expect(textContent).toBeDefined();
 		}, 30000);
 	});
+
+	describe('cross-provider handoff', () => {
+		it('should handle conversation with Google assistant message in history', async () => {
+			// Simulate a conversation where a previous response came from Google/Gemini
+			const googleAssistantMessage = {
+				role: 'assistant' as const,
+				id: 'msg-google-1',
+				api: 'google' as const,
+				model: { id: 'gemini-2.0-flash', api: 'google' } as any,
+				timestamp: Date.now(),
+				duration: 100,
+				stopReason: 'stop' as const,
+				content: [
+					{
+						type: 'response' as const,
+						content: [{ type: 'text' as const, content: 'I am Gemini. I told you the answer is 42.' }],
+					},
+				],
+				usage: {
+					input: 10,
+					output: 20,
+					cacheRead: 0,
+					cacheWrite: 0,
+					totalTokens: 30,
+					cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+				},
+				message: {} as any,
+			};
+
+			const context: Context = {
+				messages: [
+					{
+						role: 'user',
+						id: 'msg-1',
+						content: [{ type: 'text', content: 'What is the meaning of life?' }],
+					},
+					googleAssistantMessage,
+					{
+						role: 'user',
+						id: 'msg-2',
+						content: [{ type: 'text', content: 'What number did you just mention?' }],
+					},
+				],
+			};
+
+			const result = await completeOpenAI(model, context, { apiKey }, 'test-handoff-1');
+
+			expect(result.stopReason).toBe('stop');
+			expect(result.content.length).toBeGreaterThan(0);
+			// The response should understand the context from the Google message
+			const textContent = result.content.find(c => c.type === 'response');
+			expect(textContent).toBeDefined();
+		}, 30000);
+
+		it('should handle cross-provider handoff with thinking content', async () => {
+			// Simulate a Google thinking model response in history
+			const googleThinkingMessage = {
+				role: 'assistant' as const,
+				id: 'msg-google-think-1',
+				api: 'google' as const,
+				model: { id: 'gemini-2.0-flash-thinking', api: 'google' } as any,
+				timestamp: Date.now(),
+				duration: 200,
+				stopReason: 'stop' as const,
+				content: [
+					{
+						type: 'thinking' as const,
+						thinkingText: 'The user is asking about capitals. Paris is the capital of France.',
+					},
+					{
+						type: 'response' as const,
+						content: [{ type: 'text' as const, content: 'The capital of France is Paris.' }],
+					},
+				],
+				usage: {
+					input: 10,
+					output: 50,
+					cacheRead: 0,
+					cacheWrite: 0,
+					totalTokens: 60,
+					cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+				},
+				message: {} as any,
+			};
+
+			const context: Context = {
+				messages: [
+					{
+						role: 'user',
+						id: 'msg-1',
+						content: [{ type: 'text', content: 'What is the capital of France?' }],
+					},
+					googleThinkingMessage,
+					{
+						role: 'user',
+						id: 'msg-2',
+						content: [{ type: 'text', content: 'What city did you just mention?' }],
+					},
+				],
+			};
+
+			const result = await completeOpenAI(model, context, { apiKey }, 'test-handoff-think-1');
+
+			expect(result.stopReason).toBe('stop');
+			expect(result.content.length).toBeGreaterThan(0);
+		}, 30000);
+
+		it('should handle cross-provider tool call and result handoff', async () => {
+			// Simulate a Google model making a tool call and receiving a result
+			const googleToolCallMessage = {
+				role: 'assistant' as const,
+				id: 'msg-google-tool-1',
+				api: 'google' as const,
+				model: { id: 'gemini-2.0-flash', api: 'google' } as any,
+				timestamp: Date.now(),
+				duration: 100,
+				stopReason: 'toolUse' as const,
+				content: [
+					{
+						type: 'toolCall' as const,
+						toolCallId: 'google-call-123',
+						name: 'get_weather',
+						arguments: { location: 'Tokyo' },
+					},
+				],
+				usage: {
+					input: 10,
+					output: 20,
+					cacheRead: 0,
+					cacheWrite: 0,
+					totalTokens: 30,
+					cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+				},
+				message: {} as any,
+			};
+
+			const toolResult = {
+				role: 'toolResult' as const,
+				id: 'result-1',
+				toolCallId: 'google-call-123',
+				toolName: 'get_weather',
+				content: [{ type: 'text' as const, content: 'Sunny, 25°C in Tokyo' }],
+				isError: false,
+				timestamp: Date.now(),
+			};
+
+			const context: Context = {
+				messages: [
+					{
+						role: 'user',
+						id: 'msg-1',
+						content: [{ type: 'text', content: 'What is the weather in Tokyo?' }],
+					},
+					googleToolCallMessage,
+					toolResult,
+				],
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Get weather for a location',
+						parameters: Type.Object({
+							location: Type.String(),
+						}),
+					},
+				],
+			};
+
+			const result = await completeOpenAI(model, context, { apiKey }, 'test-handoff-tool-1');
+
+			expect(result.stopReason).toBe('stop');
+			expect(result.content.length).toBeGreaterThan(0);
+			// Should understand the tool result and respond about the weather
+			const textContent = result.content.find(c => c.type === 'response');
+			expect(textContent).toBeDefined();
+		}, 30000);
+	});
 });
