@@ -261,7 +261,6 @@ export function buildGoogleMessages(model: Model<'google'>, context: Context): C
                         // Wrap thinking in <thinking> tags for cross-provider context
                         parts.push({
                             text: `<thinking>${sanitizeSurrogates(contentBlock.thinkingText)}</thinking>`,
-                            thought: true
                         });
                     } else if (contentBlock.type === 'response') {
                         // Convert response content to text parts
@@ -282,7 +281,8 @@ export function buildGoogleMessages(model: Model<'google'>, context: Context): C
                                 id: contentBlock.toolCallId,
                                 name: contentBlock.name,
                                 args: contentBlock.arguments
-                            }
+                            },
+                            thoughtSignature: 'skip_thought_signature_validator'
                         });
                     }
                 }

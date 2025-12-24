@@ -23,8 +23,8 @@ export const completeOpenAI:CompleteFunction<'openai'> = async (
         const usage = getResponseUsage(response, model);
         let stopReason = mapStopReason(response?.status);
 
-        const toolCallIndex = content.findIndex(c => c.type === 'toolCall');
-        if(toolCallIndex && toolCallIndex !== -1 && stopReason === 'stop'){
+        const hasToolCall = content.some(c => c.type === 'toolCall');
+        if(hasToolCall && stopReason === 'stop'){
             stopReason = 'toolUse';
         }
         
