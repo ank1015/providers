@@ -1,6 +1,6 @@
 import OpenAI from "openai";
-import { AssistantResponse, BaseAssistantMessage, Context, Model, StopReason, Tool, Usage } from "../../types.js"
-import type { Response, Tool as OpenAITool, ResponseInput, ResponseInputMessageContentList, ResponseFunctionCallOutputItemList, ResponseInputItem, ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses.js";
+import { AssistantResponse, BaseAssistantMessage, Context, Model, StopReason, Tool, Usage, TextContent } from "../../types.js"
+import type { Response, Tool as OpenAITool, ResponseInput, ResponseInputMessageContentList, ResponseFunctionCallOutputItemList, ResponseInputItem, ResponseCreateParamsNonStreaming, ResponseOutputMessage, ResponseFunctionToolCall } from "openai/resources/responses/responses.js";
 import { sanitizeSurrogates } from "../../utils/sanitize-unicode.js";
 import { calculateCost } from "../../models.js";
 import { OpenAIProviderOptions } from "./types.js";
@@ -225,12 +225,46 @@ export function buildOpenAIMessages(model: Model<'openai'>, context: Context): R
                     }
                 }
             }
-            // TODO Implement other provider conversions
+            // Convert from other providers using the normalized content field
             else {
-                throw new Error(
-                    `Cannot convert ${message.model.api} assistant message to ${model.api} format. ` +
-                    `Cross-provider conversion for ${message.model.api} → ${model.api} is not yet implemented.`
-                );
+                for (const contentBlock of message.content) {
+                    if (contentBlock.type === 'thinking') {
+                        // Wrap thinking in <thinking> tags as an assistant message
+                        openAIMessages.push({
+                            type: 'message',
+                            role: 'assistant',
+                            content: [{
+                                type: 'output_text',
+                                text: `<thinking>${sanitizeSurrogates(contentBlock.thinkingText)}</thinking>`
+                            }]
+                        } as ResponseOutputMessage);
+                    } else if (contentBlock.type === 'response') {
+                        // Convert response content to message
+                        const textContent = contentBlock.content
+                            .filter(c => c.type === 'text')
+                            .map(c => sanitizeSurrogates((c as TextContent).content))
+                            .join('');
+
+                        if (textContent) {
+                            openAIMessages.push({
+                                type: 'message',
+                                role: 'assistant',
+                                content: [{
+                                    type: 'output_text',
+                                    text: textContent
+                                }]
+                            } as ResponseOutputMessage);
+                        }
+                    } else if (contentBlock.type === 'toolCall') {
+                        // Convert tool call to function_call
+                        openAIMessages.push({
+                            type: 'function_call',
+                            call_id: contentBlock.toolCallId,
+                            name: contentBlock.name,
+                            arguments: JSON.stringify(contentBlock.arguments)
+                        } as ResponseFunctionToolCall);
+                    }
+                }
             }
         }
 
