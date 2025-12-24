@@ -1,4 +1,4 @@
-import { Model, AssistantResponse, StopReason, Usage, Context, BaseAssistantMessage, Tool } from "../../types.js";
+import { Model, AssistantResponse, StopReason, Usage, Context, BaseAssistantMessage, Tool, TextContent } from "../../types.js";
 import { GenerateContentConfig, GenerateContentResponse, GoogleGenAI, FinishReason, GenerateContentParameters, ToolListUnion, ContentListUnion, Part } from "@google/genai";
 import { calculateCost } from "../../models.js";
 import { GoogleProviderOptions } from "./types.js";
@@ -252,12 +252,47 @@ export function buildGoogleMessages(model: Model<'google'>, context: Context): C
                     }
                 }
             }
-            // TODO Implement other provider conversions
+            // Convert from other providers using the normalized content field
             else {
-                throw new Error(
-                    `Cannot convert ${message.model.api} assistant message to ${model.api} format. ` +
-                    `Cross-provider conversion for ${message.model.api} → ${model.api} is not yet implemented.`
-                );
+                const parts: Part[] = [];
+
+                for (const contentBlock of message.content) {
+                    if (contentBlock.type === 'thinking') {
+                        // Wrap thinking in <thinking> tags for cross-provider context
+                        parts.push({
+                            text: `<thinking>${sanitizeSurrogates(contentBlock.thinkingText)}</thinking>`,
+                            thought: true
+                        });
+                    } else if (contentBlock.type === 'response') {
+                        // Convert response content to text parts
+                        const textContent = contentBlock.content
+                            .filter(c => c.type === 'text')
+                            .map(c => sanitizeSurrogates((c as TextContent).content))
+                            .join('');
+
+                        if (textContent) {
+                            parts.push({
+                                text: textContent
+                            });
+                        }
+                    } else if (contentBlock.type === 'toolCall') {
+                        // Convert tool call to Google's functionCall format
+                        parts.push({
+                            functionCall: {
+                                id: contentBlock.toolCallId,
+                                name: contentBlock.name,
+                                args: contentBlock.arguments
+                            }
+                        });
+                    }
+                }
+
+                if (parts.length > 0) {
+                    contents.push({
+                        role: 'model',
+                        parts
+                    });
+                }
             }
         }
     }
