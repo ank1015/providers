@@ -447,30 +447,225 @@ describe('OpenAI Utils', () => {
 				});
 			});
 
-			it('should throw for cross-provider assistant message', () => {
-				const googleModel: Model<'openai'> = { ...mockModel };
-				const assistantMessage: BaseAssistantMessage<'google'> = {
-					role: 'assistant',
-					id: 'msg-1',
-					api: 'google',
-					model: { id: 'gemini', api: 'google' } as any,
-					timestamp: Date.now(),
-					duration: 100,
-					stopReason: 'stop',
-					content: [],
-					usage: {
-						input: 10,
-						output: 20,
-						cacheRead: 0,
-						cacheWrite: 0,
-						totalTokens: 30,
-						cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-					},
-					message: {} as any,
-				};
-				const context: Context = { messages: [assistantMessage as any] };
+			describe('cross-provider handoff', () => {
+				it('should convert Google assistant text response to OpenAI format', () => {
+					const assistantMessage: BaseAssistantMessage<'google'> = {
+						role: 'assistant',
+						id: 'msg-1',
+						api: 'google',
+						model: { id: 'gemini-2.0-flash', api: 'google' } as any,
+						timestamp: Date.now(),
+						duration: 100,
+						stopReason: 'stop',
+						content: [
+							{
+								type: 'response',
+								content: [{ type: 'text', content: 'Hello from Gemini!' }],
+							},
+						],
+						usage: {
+							input: 10,
+							output: 20,
+							cacheRead: 0,
+							cacheWrite: 0,
+							totalTokens: 30,
+							cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+						},
+						message: {} as any,
+					};
+					const context: Context = { messages: [assistantMessage as any] };
 
-				expect(() => buildOpenAIMessages(googleModel, context)).toThrow(/Cannot convert google assistant message to openai format/);
+					const result = buildOpenAIMessages(mockModel, context);
+					expect(result[0]).toEqual({
+						type: 'message',
+						role: 'assistant',
+						content: [{ type: 'output_text', text: 'Hello from Gemini!' }],
+					});
+				});
+
+				it('should convert Google assistant thinking to OpenAI format with thinking tags', () => {
+					const assistantMessage: BaseAssistantMessage<'google'> = {
+						role: 'assistant',
+						id: 'msg-1',
+						api: 'google',
+						model: { id: 'gemini-2.0-flash-thinking', api: 'google' } as any,
+						timestamp: Date.now(),
+						duration: 100,
+						stopReason: 'stop',
+						content: [
+							{
+								type: 'thinking',
+								thinkingText: 'Let me analyze this problem...',
+							},
+							{
+								type: 'response',
+								content: [{ type: 'text', content: 'The answer is 42.' }],
+							},
+						],
+						usage: {
+							input: 10,
+							output: 20,
+							cacheRead: 0,
+							cacheWrite: 0,
+							totalTokens: 30,
+							cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+						},
+						message: {} as any,
+					};
+					const context: Context = { messages: [assistantMessage as any] };
+
+					const result = buildOpenAIMessages(mockModel, context);
+					expect(result[0]).toEqual({
+						type: 'message',
+						role: 'assistant',
+						content: [{ type: 'output_text', text: '<thinking>Let me analyze this problem...</thinking>' }],
+					});
+					expect(result[1]).toEqual({
+						type: 'message',
+						role: 'assistant',
+						content: [{ type: 'output_text', text: 'The answer is 42.' }],
+					});
+				});
+
+				it('should convert Google assistant tool calls to OpenAI format', () => {
+					const assistantMessage: BaseAssistantMessage<'google'> = {
+						role: 'assistant',
+						id: 'msg-1',
+						api: 'google',
+						model: { id: 'gemini-2.0-flash', api: 'google' } as any,
+						timestamp: Date.now(),
+						duration: 100,
+						stopReason: 'toolUse',
+						content: [
+							{
+								type: 'toolCall',
+								toolCallId: 'call-123',
+								name: 'get_weather',
+								arguments: { location: 'San Francisco' },
+							},
+						],
+						usage: {
+							input: 10,
+							output: 20,
+							cacheRead: 0,
+							cacheWrite: 0,
+							totalTokens: 30,
+							cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+						},
+						message: {} as any,
+					};
+					const context: Context = { messages: [assistantMessage as any] };
+
+					const result = buildOpenAIMessages(mockModel, context);
+					expect(result[0]).toEqual({
+						type: 'function_call',
+						call_id: 'call-123',
+						name: 'get_weather',
+						arguments: '{"location":"San Francisco"}',
+					});
+				});
+
+				it('should handle mixed content from cross-provider messages', () => {
+					const assistantMessage: BaseAssistantMessage<'google'> = {
+						role: 'assistant',
+						id: 'msg-1',
+						api: 'google',
+						model: { id: 'gemini-2.0-flash', api: 'google' } as any,
+						timestamp: Date.now(),
+						duration: 100,
+						stopReason: 'toolUse',
+						content: [
+							{
+								type: 'response',
+								content: [{ type: 'text', content: 'I will search for that.' }],
+							},
+							{
+								type: 'toolCall',
+								toolCallId: 'call-456',
+								name: 'search',
+								arguments: { query: 'test' },
+							},
+						],
+						usage: {
+							input: 10,
+							output: 20,
+							cacheRead: 0,
+							cacheWrite: 0,
+							totalTokens: 30,
+							cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+						},
+						message: {} as any,
+					};
+					const context: Context = { messages: [assistantMessage as any] };
+
+					const result = buildOpenAIMessages(mockModel, context);
+					expect(result.length).toBe(2);
+					expect((result[0] as any).type).toBe('message');
+					expect((result[1] as any).type).toBe('function_call');
+				});
+
+				it('should sanitize unicode in cross-provider messages', () => {
+					const unpaired = String.fromCharCode(0xD83D);
+					const assistantMessage: BaseAssistantMessage<'google'> = {
+						role: 'assistant',
+						id: 'msg-1',
+						api: 'google',
+						model: { id: 'gemini-2.0-flash', api: 'google' } as any,
+						timestamp: Date.now(),
+						duration: 100,
+						stopReason: 'stop',
+						content: [
+							{
+								type: 'response',
+								content: [{ type: 'text', content: `Hello ${unpaired} World` }],
+							},
+						],
+						usage: {
+							input: 10,
+							output: 20,
+							cacheRead: 0,
+							cacheWrite: 0,
+							totalTokens: 30,
+							cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+						},
+						message: {} as any,
+					};
+					const context: Context = { messages: [assistantMessage as any] };
+
+					const result = buildOpenAIMessages(mockModel, context);
+					expect((result[0] as any).content[0].text).toBe('Hello  World');
+				});
+
+				it('should skip empty text responses from cross-provider messages', () => {
+					const assistantMessage: BaseAssistantMessage<'google'> = {
+						role: 'assistant',
+						id: 'msg-1',
+						api: 'google',
+						model: { id: 'gemini-2.0-flash', api: 'google' } as any,
+						timestamp: Date.now(),
+						duration: 100,
+						stopReason: 'stop',
+						content: [
+							{
+								type: 'response',
+								content: [{ type: 'text', content: '' }],
+							},
+						],
+						usage: {
+							input: 10,
+							output: 20,
+							cacheRead: 0,
+							cacheWrite: 0,
+							totalTokens: 30,
+							cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+						},
+						message: {} as any,
+					};
+					const context: Context = { messages: [assistantMessage as any] };
+
+					const result = buildOpenAIMessages(mockModel, context);
+					expect(result.length).toBe(0);
+				});
 			});
 		});
 	});

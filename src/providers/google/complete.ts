@@ -22,7 +22,13 @@ export const completeGoogle:CompleteFunction<'google'> = async (
         // Cache processed content to ensure stable tool call IDs
         const content = getResponseAssistantResponse(response);
         const usage = getResponseUsage(response, model);
-        const stopReason = getAssistantStopReason(response);
+        let stopReason = getAssistantStopReason(response);
+
+        // Check if any tool calls are present and update stopReason
+        const hasToolCall = content.some(c => c.type === 'toolCall');
+        if (hasToolCall && stopReason === 'stop') {
+            stopReason = 'toolUse';
+        }
     
         return {
             role: "assistant",

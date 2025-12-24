@@ -11,7 +11,7 @@ import {
 	mapStopReason,
 } from '../../../../src/providers/google/utils.js';
 import type { Context, Model, BaseAssistantMessage, Tool, UserMessage, ToolResultMessage } from '../../../../src/types.js';
-import type { GenerateContentResponse } from '@google/genai';
+import type { Content, ContentListUnion, GenerateContentResponse } from '@google/genai';
 import { FinishReason, GoogleGenAI } from '@google/genai';
 import { Type } from '@sinclair/typebox';
 
@@ -336,29 +336,259 @@ describe('Google Utils', () => {
 				expect((result as any).length).toBe(2);
 			});
 
-			it('should throw for cross-provider assistant message', () => {
-				const assistantMessage: BaseAssistantMessage<'openai'> = {
-					role: 'assistant',
-					id: 'msg-1',
-					api: 'openai',
-					model: { id: 'gpt-4', api: 'openai' } as any,
-					timestamp: Date.now(),
-					duration: 100,
-					stopReason: 'stop',
-					content: [],
-					usage: {
-						input: 10,
-						output: 20,
-						cacheRead: 0,
-						cacheWrite: 0,
-						totalTokens: 30,
-						cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-					},
-					message: {} as any,
-				};
-				const context: Context = { messages: [assistantMessage as any] };
+			describe('cross-provider handoff', () => {
+				it('should convert OpenAI assistant text response to Google format', () => {
+					const assistantMessage: BaseAssistantMessage<'openai'> = {
+						role: 'assistant',
+						id: 'msg-1',
+						api: 'openai',
+						model: { id: 'gpt-4o', api: 'openai' } as any,
+						timestamp: Date.now(),
+						duration: 100,
+						stopReason: 'stop',
+						content: [
+							{
+								type: 'response',
+								content: [{ type: 'text', content: 'Hello from GPT!' }],
+							},
+						],
+						usage: {
+							input: 10,
+							output: 20,
+							cacheRead: 0,
+							cacheWrite: 0,
+							totalTokens: 30,
+							cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+						},
+						message: {} as any,
+					};
+					const context: Context = { messages: [assistantMessage as any] };
 
-				expect(() => buildGoogleMessages(mockModel, context)).toThrow(/Cannot convert openai assistant message to google format/);
+					const result = buildGoogleMessages(mockModel, context);
+					expect(result[0]).toEqual({
+						role: 'model',
+						parts: [{ text: 'Hello from GPT!' }],
+					});
+				});
+
+				it('should convert OpenAI assistant thinking to Google format with thinking tags', () => {
+					const assistantMessage: BaseAssistantMessage<'openai'> = {
+						role: 'assistant',
+						id: 'msg-1',
+						api: 'openai',
+						model: { id: 'o1', api: 'openai' } as any,
+						timestamp: Date.now(),
+						duration: 100,
+						stopReason: 'stop',
+						content: [
+							{
+								type: 'thinking',
+								thinkingText: 'Let me analyze this problem...',
+							},
+							{
+								type: 'response',
+								content: [{ type: 'text', content: 'The answer is 42.' }],
+							},
+						],
+						usage: {
+							input: 10,
+							output: 20,
+							cacheRead: 0,
+							cacheWrite: 0,
+							totalTokens: 30,
+							cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+						},
+						message: {} as any,
+					};
+					const context: Context = { messages: [assistantMessage as any] };
+
+					const result = buildGoogleMessages(mockModel, context);
+					expect(result[0]).toEqual({
+						role: 'model',
+						parts: [
+							{ text: '<thinking>Let me analyze this problem...</thinking>', thought: true },
+							{ text: 'The answer is 42.' },
+						],
+					});
+				});
+
+				it('should convert OpenAI assistant tool calls to Google format', () => {
+					const assistantMessage: BaseAssistantMessage<'openai'> = {
+						role: 'assistant',
+						id: 'msg-1',
+						api: 'openai',
+						model: { id: 'gpt-4o', api: 'openai' } as any,
+						timestamp: Date.now(),
+						duration: 100,
+						stopReason: 'toolUse',
+						content: [
+							{
+								type: 'toolCall',
+								toolCallId: 'call-123',
+								name: 'get_weather',
+								arguments: { location: 'San Francisco' },
+							},
+						],
+						usage: {
+							input: 10,
+							output: 20,
+							cacheRead: 0,
+							cacheWrite: 0,
+							totalTokens: 30,
+							cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+						},
+						message: {} as any,
+					};
+					const context: Context = { messages: [assistantMessage as any] };
+
+					const result = buildGoogleMessages(mockModel, context);
+					expect(result[0]).toEqual({
+						role: 'model',
+						parts: [
+							{
+								functionCall: {
+									id: 'call-123',
+									name: 'get_weather',
+									args: { location: 'San Francisco' },
+								},
+							},
+						],
+					});
+				});
+
+				it('should handle mixed content from cross-provider messages', () => {
+					const assistantMessage: BaseAssistantMessage<'openai'> = {
+						role: 'assistant',
+						id: 'msg-1',
+						api: 'openai',
+						model: { id: 'gpt-4o', api: 'openai' } as any,
+						timestamp: Date.now(),
+						duration: 100,
+						stopReason: 'toolUse',
+						content: [
+							{
+								type: 'response',
+								content: [{ type: 'text', content: 'I will search for that.' }],
+							},
+							{
+								type: 'toolCall',
+								toolCallId: 'call-456',
+								name: 'search',
+								arguments: { query: 'test' },
+							},
+						],
+						usage: {
+							input: 10,
+							output: 20,
+							cacheRead: 0,
+							cacheWrite: 0,
+							totalTokens: 30,
+							cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+						},
+						message: {} as any,
+					};
+					const context: Context = { messages: [assistantMessage as any] };
+
+					const result = buildGoogleMessages(mockModel, context);
+					expect(result[0].parts.length).toBe(2);
+					expect(result[0].parts[0]).toEqual({ text: 'I will search for that.' });
+					expect(result[0].parts[1]).toEqual({
+						functionCall: {
+							id: 'call-456',
+							name: 'search',
+							args: { query: 'test' },
+						},
+					});
+				});
+
+				it('should sanitize unicode in cross-provider messages', () => {
+					const unpaired = String.fromCharCode(0xD83D);
+					const assistantMessage: BaseAssistantMessage<'openai'> = {
+						role: 'assistant',
+						id: 'msg-1',
+						api: 'openai',
+						model: { id: 'gpt-4o', api: 'openai' } as any,
+						timestamp: Date.now(),
+						duration: 100,
+						stopReason: 'stop',
+						content: [
+							{
+								type: 'response',
+								content: [{ type: 'text', content: `Hello ${unpaired} World` }],
+							},
+						],
+						usage: {
+							input: 10,
+							output: 20,
+							cacheRead: 0,
+							cacheWrite: 0,
+							totalTokens: 30,
+							cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+						},
+						message: {} as any,
+					};
+					const context: Context = { messages: [assistantMessage as any] };
+
+					const result = buildGoogleMessages(mockModel, context);
+					expect(result[0].parts[0].text).toBe('Hello  World');
+				});
+
+				it('should skip empty content from cross-provider messages', () => {
+					const assistantMessage: BaseAssistantMessage<'openai'> = {
+						role: 'assistant',
+						id: 'msg-1',
+						api: 'openai',
+						model: { id: 'gpt-4o', api: 'openai' } as any,
+						timestamp: Date.now(),
+						duration: 100,
+						stopReason: 'stop',
+						content: [],
+						usage: {
+							input: 10,
+							output: 20,
+							cacheRead: 0,
+							cacheWrite: 0,
+							totalTokens: 30,
+							cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+						},
+						message: {} as any,
+					};
+					const context: Context = { messages: [assistantMessage as any] };
+
+					const result = buildGoogleMessages(mockModel, context);
+					expect((result as Content[]).length).toBe(0);
+				});
+
+				it('should skip empty text responses from cross-provider messages', () => {
+					const assistantMessage: BaseAssistantMessage<'openai'> = {
+						role: 'assistant',
+						id: 'msg-1',
+						api: 'openai',
+						model: { id: 'gpt-4o', api: 'openai' } as any,
+						timestamp: Date.now(),
+						duration: 100,
+						stopReason: 'stop',
+						content: [
+							{
+								type: 'response',
+								content: [{ type: 'text', content: '' }],
+							},
+						],
+						usage: {
+							input: 10,
+							output: 20,
+							cacheRead: 0,
+							cacheWrite: 0,
+							totalTokens: 30,
+							cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+						},
+						message: {} as any,
+					};
+					const context: Context = { messages: [assistantMessage as any] };
+
+					const result = buildGoogleMessages(mockModel, context);
+					expect((result as Content[]).length).toBe(0);
+				});
 			});
 		});
 	});
