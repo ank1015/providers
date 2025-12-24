@@ -1,6 +1,6 @@
 {
 	"name": "@ank1015/providers",
-	"version": "0.0.3",
+	"version": "0.0.31",
 	"type": "module",
 	"description": "Multi-provider LLM SDK with native provider options support.",
 	"main": "./dist/index.js",
