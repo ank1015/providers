@@ -406,7 +406,7 @@ describe('Google Utils', () => {
 					expect(result[0]).toEqual({
 						role: 'model',
 						parts: [
-							{ text: '<thinking>Let me analyze this problem...</thinking>', thought: true },
+							{ text: '<thinking>Let me analyze this problem...</thinking>' },
 							{ text: 'The answer is 42.' },
 						],
 					});
@@ -451,6 +451,7 @@ describe('Google Utils', () => {
 									name: 'get_weather',
 									args: { location: 'San Francisco' },
 								},
+								thoughtSignature: 'skip_thought_signature_validator'
 							},
 						],
 					});
@@ -498,6 +499,7 @@ describe('Google Utils', () => {
 							name: 'search',
 							args: { query: 'test' },
 						},
+						thoughtSignature: 'skip_thought_signature_validator'
 					});
 				});
 
