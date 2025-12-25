@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.32] - 2024-12-25
+
+### Fixed
+- **Google Provider**: Correct input token calculation by subtracting cached tokens from prompt token count.
+- **Package**: Updated test script to run unit tests specifically in `prepublishOnly`.
+
 ## [0.0.31] - 2024-12-24
 
 ### Added
