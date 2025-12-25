@@ -103,7 +103,7 @@ export function getAssistantStopReason(response: GenerateContentResponse): StopR
 export function getResponseUsage(response: GenerateContentResponse, model: Model<'google'>): Usage {
     // Extract usage information
     const usage: Usage = {
-        input: response.usageMetadata?.promptTokenCount || 0,
+        input: (response.usageMetadata?.promptTokenCount || 0) - (response.usageMetadata?.cachedContentTokenCount || 0),
         output: (response.usageMetadata?.candidatesTokenCount || 0) +
             (response.usageMetadata?.thoughtsTokenCount || 0),
         cacheRead: response.usageMetadata?.cachedContentTokenCount || 0,

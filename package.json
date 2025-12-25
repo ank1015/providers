@@ -22,7 +22,8 @@
 		"clean": "rm -rf dist",
 		"check": "biome check --write . && tsc --noEmit",
 		"test": "vitest --run",
-		"prepublishOnly": "npm run check && npm run test && npm run build"
+		"test:unit": "vitest --run tests/unit",
+		"prepublishOnly": "npm run check && npm run test:unit && npm run build"
 	},
 	"repository": {
 		"type": "git",
