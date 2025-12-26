@@ -7,6 +7,7 @@ export * from './models.generated.js';
 export * from './llm.js';
 export * from './providers/openai/index.js';
 export * from './providers/google/index.js';
+export * from './providers/deepseek/index.js';
 
 export * from './agent/conversation.js';
 export * from './agent/utils.js';
