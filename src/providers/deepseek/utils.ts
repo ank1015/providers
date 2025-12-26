@@ -195,15 +195,7 @@ export function buildDeepSeekMessages(_model: Model<'deepseek'>, context: Contex
 				const originalMessage = baseMessage.message.choices[0]?.message;
 
 				if (originalMessage) {
-					const assistantMessage: ChatCompletionAssistantMessageParam = {
-						role: 'assistant',
-						content: originalMessage.content || null
-					};
-
-					// Add tool calls if present
-					if (originalMessage.tool_calls && originalMessage.tool_calls.length > 0) {
-						assistantMessage.tool_calls = originalMessage.tool_calls;
-					}
+					const assistantMessage: ChatCompletionAssistantMessageParam = originalMessage
 
 					messages.push(assistantMessage);
 				}
