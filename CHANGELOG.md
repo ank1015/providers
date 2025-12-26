@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.33] - 2024-12-26
+
+### Added
+- **DeepSeek Provider**: Full support for DeepSeek models
+  - Implemented `deepseek-reasoner` (DeepSeek V3.2)
+  - Complete support for `complete` and `stream` functionality
+  - Pricing and context window configuration added
+  - Integration with unified SDK interface
+
 ## [0.0.32] - 2024-12-25
 
 ### Fixed

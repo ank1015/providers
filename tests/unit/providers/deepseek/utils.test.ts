@@ -259,7 +259,7 @@ describe('DeepSeek Utils', () => {
 
 		describe('assistant messages', () => {
 			it('should convert DeepSeek assistant messages (preserves native)', () => {
-				const mockChatCompletion: ChatCompletion = {
+				const mockChatCompletion: any = {
 					id: 'chatcmpl-123',
 					object: 'chat.completion',
 					created: Date.now(),
@@ -269,7 +269,6 @@ describe('DeepSeek Utils', () => {
 						message: {
 							role: 'assistant',
 							content: 'Hello from DeepSeek!',
-							refusal: null,
 						},
 						finish_reason: 'stop',
 						logprobs: null,
@@ -306,7 +305,7 @@ describe('DeepSeek Utils', () => {
 			});
 
 			it('should handle assistant messages with tool calls', () => {
-				const mockChatCompletion: ChatCompletion = {
+				const mockChatCompletion: any = {
 					id: 'chatcmpl-123',
 					object: 'chat.completion',
 					created: Date.now(),
@@ -316,7 +315,6 @@ describe('DeepSeek Utils', () => {
 						message: {
 							role: 'assistant',
 							content: null,
-							refusal: null,
 							tool_calls: [{
 								id: 'call-123',
 								type: 'function',
@@ -400,6 +398,7 @@ describe('DeepSeek Utils', () => {
 					expect(result[0]).toEqual({
 						role: 'assistant',
 						content: 'Hello from Gemini!',
+						reasoning_content: ""
 					});
 				});
 
@@ -437,7 +436,8 @@ describe('DeepSeek Utils', () => {
 					const result = buildDeepSeekMessages(mockModel, context);
 					expect(result[0]).toEqual({
 						role: 'assistant',
-						content: '<thinking>Let me analyze this...</thinking>\nThe answer is 42.',
+						reasoning_content: 'Let me analyze this...',
+						content: "The answer is 42."
 					});
 				});
 
@@ -474,6 +474,7 @@ describe('DeepSeek Utils', () => {
 					expect(result[0]).toEqual({
 						role: 'assistant',
 						content: null,
+						reasoning_content: "",
 						tool_calls: [{
 							id: 'call-123',
 							type: 'function',
