@@ -157,5 +157,24 @@ export const MODELS = {
 			maxTokens: 32768,
 			tools: [],
 		} satisfies Model<"google">,
+	},
+	deepseek: {
+		"deepseek": {
+			id: "deepseek-reasoner",
+			name: "Deepseek V3.2",
+			api: "google",
+			baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+			reasoning: true,
+			input: ["text", "image"],
+			cost: {
+				input: 0.28,
+				output: 0.42,
+				cacheRead: 0.028,
+				cacheWrite: 0,
+			},
+			contextWindow: 128000,
+			maxTokens: 64000,
+			tools: [],
+		} satisfies Model<"google">,
 	}
 }
