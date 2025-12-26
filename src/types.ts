@@ -1,11 +1,13 @@
 import { Response } from "openai/resources/responses/responses.js";
+import type { ChatCompletion } from "openai/resources/chat/completions.js";
 import type { GenerateContentResponse } from "@google/genai";
 import type { TSchema } from "@sinclair/typebox";
 import { OpenAIProviderOptions } from "./providers/openai/index.js";
 import { GoogleProviderOptions } from "./providers/google/index.js";
+import { DeepSeekProviderOptions } from "./providers/deepseek/index.js";
 import { AssistantMessageEventStream } from "./utils/event-stream.js";
 
-export const KnownApis = ['openai', 'google'] as const;                                                                                                         
+export const KnownApis = ['openai', 'google', 'deepseek'] as const;                                                                                                         
 export type Api = typeof KnownApis[number]; 
 export interface Model<TApi extends Api> {
 	id: string;
@@ -117,6 +119,7 @@ export interface Usage {
 export interface ApiNativeAssistantMessageMap {
     "openai": Response;
     "google": GenerateContentResponse;
+    "deepseek": ChatCompletion;
 }
 
 export type NativeAssistantMessageForApi<TApi extends Api> = ApiNativeAssistantMessageMap[TApi]
@@ -186,6 +189,7 @@ export interface Context {
 export interface ApiOptionsMap {
 	'openai': OpenAIProviderOptions
 	'google': GoogleProviderOptions
+	'deepseek': DeepSeekProviderOptions
 }
 
 export type OptionsForApi<TApi extends Api> = ApiOptionsMap[TApi]

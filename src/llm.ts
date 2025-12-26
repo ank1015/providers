@@ -2,6 +2,8 @@ import { completeGoogle, GoogleProviderOptions, streamGoogle } from "./providers
 import { getMockGoogleMessage } from "./providers/google/utils.js";
 import { completeOpenAI, OpenAIProviderOptions, streamOpenAI } from "./providers/openai/index.js";
 import { getMockOpenaiMessage } from "./providers/openai/utils.js";
+import { completeDeepSeek, DeepSeekProviderOptions, streamDeepSeek } from "./providers/deepseek/index.js";
+import { getMockDeepSeekMessage } from "./providers/deepseek/utils.js";
 import { Model, Api, Context, OptionsForApi, BaseAssistantMessage } from "./types.js";
 import { AssistantMessageEventStream } from "./utils/event-stream.js";
 import { generateUUID } from "./utils/uuid.js";
@@ -9,6 +11,7 @@ import { generateUUID } from "./utils/uuid.js";
 const envMap: Record<Api, string> = {
     openai: "OPENAI_API_KEY",
     google: "GEMINI_API_KEY",
+    deepseek: "DEEPSEEK_API_KEY",
 };
 
 
@@ -50,6 +53,13 @@ export async function complete<TApi extends Api>(
                 providerOptions as GoogleProviderOptions,
                 messageId
             ) as Promise<BaseAssistantMessage<TApi>>;
+        case 'deepseek':
+            return completeDeepSeek(
+                model as Model<'deepseek'>,
+                context,
+                providerOptions as DeepSeekProviderOptions,
+                messageId
+            ) as Promise<BaseAssistantMessage<TApi>>;
         default: {
             const _exhaustive: never = model.api;
             throw new Error(`Unhandled API: ${_exhaustive}`);
@@ -89,6 +99,13 @@ export function stream<TApi extends Api>(
                 providerOptions as GoogleProviderOptions,
                 messageId
             ) as unknown as AssistantMessageEventStream<TApi>;
+        case 'deepseek':
+            return streamDeepSeek(
+                model as Model<'deepseek'>,
+                context,
+                providerOptions as DeepSeekProviderOptions,
+                messageId
+            ) as unknown as AssistantMessageEventStream<TApi>;
         default: {
             const _exhaustive: never = model.api;
             throw new Error(`Unhandled API: ${_exhaustive}`);
@@ -103,6 +120,8 @@ export function getMockMessage(model: Model<Api>): BaseAssistantMessage<Api> {
         message = getMockOpenaiMessage()
     } else if (model.api === 'google') {
         message = getMockGoogleMessage()
+    } else if (model.api === 'deepseek') {
+        message = getMockDeepSeekMessage()
     }
     const baseMessage: BaseAssistantMessage<Api> = {
         role: 'assistant',
