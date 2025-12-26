@@ -162,10 +162,10 @@ export const MODELS = {
 		"deepseek": {
 			id: "deepseek-reasoner",
 			name: "Deepseek V3.2",
-			api: "google",
-			baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+			api: "deepseek",
+			baseUrl: "https://api.deepseek.com",
 			reasoning: true,
-			input: ["text", "image"],
+			input: ["text"],
 			cost: {
 				input: 0.28,
 				output: 0.42,
@@ -174,7 +174,7 @@ export const MODELS = {
 			},
 			contextWindow: 128000,
 			maxTokens: 64000,
-			tools: [],
-		} satisfies Model<"google">,
+			tools: ['function_calling'],
+		} satisfies Model<"deepseek">,
 	}
 }

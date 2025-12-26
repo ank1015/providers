@@ -211,11 +211,12 @@ export function buildDeepSeekMessages(_model: Model<'deepseek'>, context: Contex
 				// Convert from other providers using normalized content
 				let textContent = '';
 				const toolCalls: ChatCompletionAssistantMessageParam['tool_calls'] = [];
+				let reasoningContent = ''
 
 				for (const contentBlock of message.content) {
 					if (contentBlock.type === 'thinking') {
 						// Wrap thinking in tags for cross-provider context
-						textContent += `<thinking>${sanitizeSurrogates(contentBlock.thinkingText)}</thinking>\n`;
+						reasoningContent += `${sanitizeSurrogates(contentBlock.thinkingText)}`;
 					} else if (contentBlock.type === 'response') {
 						const text = contentBlock.content
 							.filter(c => c.type === 'text')
@@ -234,8 +235,9 @@ export function buildDeepSeekMessages(_model: Model<'deepseek'>, context: Contex
 					}
 				}
 
-				const assistantMessage: ChatCompletionAssistantMessageParam = {
+				const assistantMessage: any = {
 					role: 'assistant',
+					reasoning_content: reasoningContent,
 					content: textContent || null
 				};
 
