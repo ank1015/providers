@@ -185,8 +185,9 @@ export const streamAnthropic: StreamFunction<'anthropic'> = (
 							const partialJson = accumulatedContent[accumBlockIndex].partialJson;
 							(accumulatedContent[accumBlockIndex] as any).input = parseStreamingJson(partialJson);
 						}
-						if(accumulatedContent[accumBlockIndex].index) delete accumulatedContent[accumBlockIndex].index
-						if(accumulatedContent[accumBlockIndex].partialJson) delete accumulatedContent[accumBlockIndex].partialJson
+						// Always delete index and partialJson - don't use truthy check as index can be 0
+						if(accumulatedContent[accumBlockIndex].index !== undefined) delete accumulatedContent[accumBlockIndex].index
+						if(accumulatedContent[accumBlockIndex].partialJson !== undefined) delete accumulatedContent[accumBlockIndex].partialJson
 					}
 					if (block) {
 						delete (block as any).index;
