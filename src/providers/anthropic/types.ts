@@ -5,4 +5,4 @@ type Props = {
 	signal?: AbortSignal;
 }
 
-export type AnthropicProviderOptions = Omit<MessageCreateParamsNonStreaming, 'model' | 'messages'> & Props
+export type AnthropicProviderOptions = Omit<MessageCreateParamsNonStreaming, 'model' | 'messages' | 'system'> & Props

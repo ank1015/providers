@@ -1,12 +1,12 @@
 import { Response } from "openai/resources/responses/responses.js";
 import type { ChatCompletion } from "openai/resources/chat/completions.js";
 import type { GenerateContentResponse } from "@google/genai";
-import type { Message } from "@anthropic-ai/sdk/resources/messages.js";
+import type { Message as AnthropicMessage } from "@anthropic-ai/sdk/resources/messages.js";
 import type { TSchema } from "@sinclair/typebox";
 import { OpenAIProviderOptions } from "./providers/openai/index.js";
 import { GoogleProviderOptions } from "./providers/google/index.js";
 import { DeepSeekProviderOptions } from "./providers/deepseek/index.js";
-import { AnthropicProviderOptions } from "./providers/anthropic/index.js";
+import { AnthropicProviderOptions } from "./providers/anthropic/types.js";
 import { AssistantMessageEventStream } from "./utils/event-stream.js";
 
 export const KnownApis = ['openai', 'google', 'deepseek', 'anthropic'] as const;                                                                                                         
@@ -122,7 +122,7 @@ export interface ApiNativeAssistantMessageMap {
     "openai": Response;
     "google": GenerateContentResponse;
     "deepseek": ChatCompletion;
-    "anthropic": Message;
+    "anthropic": AnthropicMessage;
 }
 
 export type NativeAssistantMessageForApi<TApi extends Api> = ApiNativeAssistantMessageMap[TApi]
