@@ -56,12 +56,24 @@ export interface AgentState {
 	isStreaming: boolean;
 	pendingToolCalls: Set<string>;
 	error?: string;
+	usage: {
+		totalTokens: number;
+		totalCost: number;
+		lastInputTokens: number;
+	};
+	costLimit?: number;
+	contextLimit?: number;
 }
 
 export interface AgentLoopConfig {
 	systemPrompt?: string;
 	tools: AgentTool[];
 	provider: Provider<Api>;
+	budget?: {
+		costLimit?: number;
+		contextLimit?: number;
+		currentCost: number;
+	};
 	getQueuedMessages: <T>() => Promise<QueuedMessage<T>[]>
 }
 

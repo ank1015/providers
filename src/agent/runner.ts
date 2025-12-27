@@ -63,6 +63,9 @@ export class DefaultAgentRunner implements AgentRunner {
         let firstTurn = true;
         let queuedMessages: QueuedMessage<any>[] = (await config.getQueuedMessages()) || [];
 
+        // Track accumulated cost within this run execution if budget is provided
+        let currentRunCost = 0;
+
         while (hasMoreToolCalls || queuedMessages.length > 0) {
             if (!firstTurn) {
                 emit({ type: 'turn_start' });
@@ -94,6 +97,28 @@ export class DefaultAgentRunner implements AgentRunner {
             newMessages.push(assistantMessage);
             callbacks.appendMessage(assistantMessage);
             updatedMessages.push(assistantMessage);
+
+            // Check budget limits
+            if (config.budget) {
+                currentRunCost += assistantMessage.usage.cost.total;
+                const totalCost = config.budget.currentCost + currentRunCost;
+                const isCostLimitExceeded = config.budget.costLimit && totalCost >= config.budget.costLimit;
+                const isContextLimitExceeded = config.budget.contextLimit && assistantMessage.usage.input >= config.budget.contextLimit;
+
+                if (isCostLimitExceeded || isContextLimitExceeded) {
+                    const toolCalls = assistantMessage.content.filter((c) => c.type === "toolCall");
+                    const hasMoreActions = toolCalls.length > 0 || queuedMessages.length > 0;
+
+                    if (hasMoreActions) {
+                         if (isCostLimitExceeded) {
+                             throw new Error(`Cost limit exceeded: ${totalCost} >= ${config.budget.costLimit}`);
+                         }
+                         if (isContextLimitExceeded) {
+                             throw new Error(`Context limit exceeded: ${assistantMessage.usage.input} >= ${config.budget.contextLimit}`);
+                         }
+                    }
+                }
+            }
 
             const stopReason = assistantMessage.stopReason;
             if (stopReason === 'aborted' || stopReason === 'error') {

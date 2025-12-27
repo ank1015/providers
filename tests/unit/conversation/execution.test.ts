@@ -204,7 +204,10 @@ describe('Conversation Execution', () => {
                 api: 'openai',
                 model: {} as any,
                 stopReason: 'stop',
-                usage: {} as any,
+                usage: {
+                    input: 0, output: 0, totalTokens: 0, cacheRead: 0, cacheWrite: 0,
+                    cost: { total: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
+                },
                 timestamp: 0,
                 duration: 0,
                 message: {} as any
@@ -236,6 +239,43 @@ describe('Conversation Execution', () => {
             const [_, msgs] = mockRunner.run.mock.calls[0];
             expect(msgs.length).toBe(1);
             expect(msgs[0]).toEqual(userMsg);
+        });
+    });
+
+    describe('Limits and Budget', () => {
+        it('should throw immediately if cost limit exceeded before run', async () => {
+            conversation.setCostLimit(1.0);
+            // Manually set usage to exceed limit
+            conversation.state.usage.totalCost = 1.5;
+
+            await expect(conversation.prompt('test')).rejects.toThrow('Cost limit exceeded');
+            expect(mockRunner.run).not.toHaveBeenCalled();
+        });
+
+        it('should NOT throw if context limit exceeded before run (check removed)', async () => {
+            conversation.setContextLimit(100);
+            conversation.state.usage.lastInputTokens = 200;
+
+            mockRunner.run.mockResolvedValue([]);
+
+            await conversation.prompt('test');
+            expect(mockRunner.run).toHaveBeenCalled();
+        });
+
+        it('should pass budget to runner', async () => {
+            conversation.setCostLimit(10.0);
+            conversation.setContextLimit(5000);
+            conversation.state.usage.totalCost = 2.5;
+
+            mockRunner.run.mockResolvedValue([]);
+
+            await conversation.prompt('test');
+
+            const [cfg] = mockRunner.run.mock.calls[0];
+            expect(cfg.budget).toBeDefined();
+            expect(cfg.budget?.costLimit).toBe(10.0);
+            expect(cfg.budget?.contextLimit).toBe(5000);
+            expect(cfg.budget?.currentCost).toBe(2.5);
         });
     });
 
