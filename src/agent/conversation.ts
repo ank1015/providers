@@ -40,7 +40,8 @@ const defaultConversationState: AgentState = {
 	error: undefined,
 	usage: {
 		totalTokens: 0,
-		totalCost: 0
+		totalCost: 0,
+		lastInputTokens: 0
 	}
 }
 
@@ -102,6 +103,22 @@ export class Conversation {
 		this.runner = new DefaultAgentRunner(this.client, { streamAssistantMessage: stream });
 	}
 
+	setCostLimit(limit: number) {
+		this._state.costLimit = limit;
+	}
+
+	getCostLimit(): number | undefined {
+		return this._state.costLimit;
+	}
+
+	setContextLimit(limit: number) {
+		this._state.contextLimit = limit;
+	}
+
+	getContextLimit(): number | undefined {
+		return this._state.contextLimit;
+	}
+
 	// State mutators - update internal state without emitting events
 	setSystemPrompt(v: string) {
 		this._state.systemPrompt = v;
@@ -129,10 +146,22 @@ export class Conversation {
 
 	appendMessage(m: Message) {
 		this._state.messages = [...this._state.messages, m];
+		if (m.role === 'assistant') {
+			this._state.usage.totalTokens = m.usage.totalTokens;
+			this._state.usage.totalCost += m.usage.cost.total;
+			this._state.usage.lastInputTokens = m.usage.input;
+		}
 	}
 
 	appendMessages(ms: Message[]) {
 		this._state.messages = [...this._state.messages, ...ms];
+		for (const m of ms) {
+			if (m.role === 'assistant') {
+				this._state.usage.totalTokens = m.usage.totalTokens;
+				this._state.usage.totalCost += m.usage.cost.total;
+				this._state.usage.lastInputTokens = m.usage.input;
+			}
+		}
 	}
 
 	async queueMessage(m: Message) {
@@ -302,6 +331,10 @@ export class Conversation {
 			throw new Error("No model configured");
 		}
 
+		if (this._state.costLimit && this._state.usage.totalCost >= this._state.costLimit) {
+			throw new Error("Cost limit exceeded");
+		}
+
 		this.runningPrompt = new Promise<void>((resolve) => {
 			this.resolveRunningPrompt = resolve;
 		});
@@ -315,6 +348,11 @@ export class Conversation {
 			systemPrompt: this._state.systemPrompt,
 			tools: this._state.tools,
 			provider: this._state.provider,
+			budget: {
+				costLimit: this._state.costLimit,
+				contextLimit: this._state.contextLimit,
+				currentCost: this._state.usage.totalCost
+			},
 			getQueuedMessages: async <T>() => {
 				if (this.queueMode === "one-at-a-time") {
 					if (this.messageQueue.length > 0) {

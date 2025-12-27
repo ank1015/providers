@@ -59,6 +59,7 @@ export interface AgentState {
 	usage: {
 		totalTokens: number;
 		totalCost: number;
+		lastInputTokens: number;
 	};
 	costLimit?: number;
 	contextLimit?: number;
