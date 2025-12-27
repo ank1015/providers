@@ -3,6 +3,7 @@ import type { MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resource
 type Props = {
 	apiKey?: string;
 	signal?: AbortSignal;
+	max_tokens?: number
 }
 
-export type AnthropicProviderOptions = Omit<MessageCreateParamsNonStreaming, 'model' | 'messages' | 'system'> & Props
+export type AnthropicProviderOptions = Omit<MessageCreateParamsNonStreaming, 'model' | 'messages' | 'system' | 'max_tokens'> & Props
