@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.35] - 2024-12-27
+
+### Added
+- **Conversation Limits**: Added optional cost and context limits to Conversation
+  - `costLimit`: Stops execution if accumulated cost exceeds limit (pre-flight and during loop)
+  - `contextLimit`: Stops execution if context size (last input tokens) exceeds limit
+  - **Usage Tracking**: Added real-time tracking of `totalTokens`, `totalCost`, and `lastInputTokens` in `AgentState`
+  - **Runtime Enforcement**: AgentRunner now strictly enforces limits during multi-step tool execution loops
+  - Added specific error types for limit violations
+
 ## [0.0.34] - 2024-12-27
 
 ### Added
