@@ -16,6 +16,9 @@ export interface AgentOptions {
 	client?: LLMClient;
 	// Agent Runner for dependency injection
 	runner?: AgentRunner;
+	// Optional limits
+	costLimit?: number;
+	contextLimit?: number;
 }
 
 const defaultModel = getModel('google', 'gemini-3-flash-preview');
@@ -34,7 +37,11 @@ const defaultConversationState: AgentState = {
 	tools: [],
 	isStreaming: false,
 	pendingToolCalls: new Set<string>(),
-	error: undefined
+	error: undefined,
+	usage: {
+		totalTokens: 0,
+		totalCost: 0
+	}
 }
 
 const defaultMessageTransformer = (messages: Message[]) => {
@@ -62,10 +69,13 @@ export class Conversation {
 		this._state = {
 			...defaultConversationState,
 			...initialState,
+			costLimit: opts.costLimit ?? initialState.costLimit,
+			contextLimit: opts.contextLimit ?? initialState.contextLimit,
 			// Override with fresh copies to ensure no shared references
 			messages: initialState.messages ? [...initialState.messages] : [],
 			tools: initialState.tools ? [...initialState.tools] : [],
 			pendingToolCalls: new Set(initialState.pendingToolCalls ?? []),
+			usage: initialState.usage ? { ...initialState.usage } : { ...defaultConversationState.usage },
 		};
 		this.messageTransformer = opts.messageTransformer || defaultMessageTransformer;
 		this.queueMode = opts.queueMode || "one-at-a-time";
