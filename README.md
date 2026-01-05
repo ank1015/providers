@@ -1,23 +1,20 @@
 # @ank1015/providers
 
-A provider abstraction layer for building agentic systems with multiple LLM providers. Built with a philosophy that **harnesses should be model-specific** while maintaining the ability to test and compose different models together.
+A provider abstraction layer for building agentic systems with multiple LLM providers. Built with the philosophy of balancing **standardization** with **provider-specific fidelity**.
 
-Most of the coding patterns are taken and inspired from [PI-mono](https://github.com/badlogic/pi-mono/tree/main)
+Most of the coding patterns are inspired by [PI-mono](https://github.com/badlogic/pi-mono/tree/main).
 
 ## Philosophy
 
-This library is designed around a key insight: **effective AI systems should be built for specific models**, following their unique best practices and capabilities. However, practical development requires:
+LLM providers often offer unique capabilities and implementation details that are not universally available. Attempting to force different providers into a single, unified message abstraction often results in the loss of provider-specific features or information.
 
-1. **Testing flexibility**: Try different models during development
-2. **Multi-model systems**: Compose systems where different models work together
-3. **Forking capability**: Convert state between providers when needed
+This library balances standardization with flexibility by:
+- **Standardizing User & Tool Messages**: Input messages and tool results use a universal format that can be adapted for any provider.
+- **Preserving Native Assistant Messages**: Assistant responses retain their native provider structure while exposing common fields (like content and usage) for convenience.
+- **Unified Streaming**: Streaming events are normalized to a consistent interface without discarding provider-specific data.
+- **Seamless Handoffs**: Switching providers is fully supported. While some provider-specific context (like caching or reasoning traces) may be lost during conversion, the core conversation history remains intact.
 
-We achieve this by:
-- Storing **user messages** and **tool results** in a standardized format (can be built for any provider)
-- Storing **assistant messages** in their **native provider format** (preserving caching, thinking traces, and internal state)
-- Providing **standardized streaming** for UI display without losing provider-specific data
-
-**This is NOT** about switching models mid-session (which loses critical state). It's about building provider-specific implementations while avoiding vendor lock-in during development. But the library still allows hand-offs mid conversation using conversion function that transform one provider messages to another.
+This approach ensures you can leverage the distinct strengths of each model—using specific harnesses to steer them effectively—while maintaining a consistent interface for testing and experimentation.
 
 ## Features
 
@@ -133,10 +130,12 @@ Subscribe to the conversation to receive real-time updates. This is crucial for 
 conversation.subscribe((event) => {
     switch (event.type) {
         case "message_update":
-             // Can handle 'thinking_delta', 'text_delta', etc. inside the event.message
-            const msg = event.message;
-            if (msg.type === 'text_delta') {
-                process.stdout.write(msg.delta);
+            // The 'message' property here is the streaming event (BaseAssistantEvent)
+            // It contains the delta and the type (e.g., 'text_delta', 'thinking_delta')
+            const streamEvent = event.message;
+            
+            if (streamEvent.type === 'text_delta') {
+                process.stdout.write(streamEvent.delta);
             }
             break;
             
@@ -151,12 +150,29 @@ conversation.subscribe((event) => {
 });
 ```
 
+## Examples
+
+Check out the `examples/` directory for complete, runnable implementations:
+
+- **[Coding Agent](examples/coding-agent)**: An agent demonstrating complex tool usage, file manipulation, and code generation capabilities.
+- **[Research Agent](examples/research-agent)**: A research assistant showcasing multi-step reasoning and information gathering.
+
+To run the examples:
+
+```bash
+# Run the coding agent CLI
+npx tsx examples/coding-agent/cli.ts
+
+# Run the research agent CLI
+npx tsx examples/research-agent/cli.ts
+```
+
 ## Architecture
 
-- **`Conversation`**: The high-level state manager. It tracks the message history (`Memory`), handles message queuing (for handling rapid user inputs), and manages the `AgentRunner`.
-- **`AgentRunner`**: A stateless engine that executes the "Agent Protocol". It sends messages to the LLM, parses tool calls from the response, executes the tools, and feeds the results back to the LLM until a final response is reached or the loop terminates.
+- **`Conversation`**: The high-level state manager. It tracks message history, handles message queuing (for rapid user inputs), and manages the `AgentRunner`.
+- **`AgentRunner`**: A stateless engine that executes the "Agent Protocol". It sends messages to the LLM, parses tool calls, executes tools, and feeds results back to the LLM until a final response is reached.
 - **`LLMClient`**: The low-level abstraction that standardizes API calls to OpenAI, Google, etc.
-- **`Utils`**: Includes powerful helpers like `parseStreamingJson` (for real-time tool visualization) and `isContextOverflow` (for handling token limits).
+- **`Utils`**: Includes helpers like `parseStreamingJson` (for real-time tool visualization) and `isContextOverflow` (for handling token limits).
 
 ## License
 
