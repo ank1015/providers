@@ -1,5 +1,5 @@
 import { Api, AssistantResponse, AssistantToolCall, BaseAssistantMessage, Message, OptionsForApi, ToolResultMessage } from "../types.js";
-import { AgentEvent, AgentLoopConfig, AgentTool, AgentToolResult, QueuedMessage } from "./types.js";
+import { AgentEvent, AgentLoopConfig, AgentTool, AgentToolResult, QueuedMessage, ToolExecutionContext } from "./types.js";
 import { getMockMessage, LLMClient } from "../llm.js";
 import { generateUUID } from "../utils/uuid.js";
 import { validateToolArguments } from "../utils/validation.js";
@@ -137,6 +137,7 @@ export class DefaultAgentRunner implements AgentRunner {
                 const toolResults = await this.executeToolCalls(
                     config.tools,
                     assistantMessageContent,
+                    updatedMessages,
                     signal,
                     emit,
                     callbacks
@@ -206,12 +207,18 @@ export class DefaultAgentRunner implements AgentRunner {
     async executeToolCalls(
         tools: AgentTool[],
         assistantMessageContent: AssistantResponse,
+        messages: Message[],
         signal: AbortSignal,
         emit: (event: AgentEvent) => void,
         callbacks: AgentRunnerCallbacks
     ): Promise<ToolResultMessage[]> {
         const toolCalls = assistantMessageContent.filter((c) => c.type === "toolCall");
         const results: ToolResultMessage[] = [];
+
+        // Create execution context with current messages (read-only)
+        const context: ToolExecutionContext = {
+            messages: Object.freeze([...messages])
+        };
 
         for (const toolCall of toolCalls) {
             if (signal.aborted) break;
@@ -238,7 +245,8 @@ export class DefaultAgentRunner implements AgentRunner {
                     toolName: toolCall.name,
                     args: toolCall.arguments,
                     partialResult
-                })
+                }),
+                context
             );
 
             // Cleanup and emit end
@@ -266,7 +274,8 @@ export class DefaultAgentRunner implements AgentRunner {
         tool: AgentTool | undefined,
         toolCall: AssistantToolCall,
         signal: AbortSignal,
-        onUpdate: (partialResult: AgentToolResult<any>) => void
+        onUpdate: (partialResult: AgentToolResult<any>) => void,
+        context: ToolExecutionContext
     ): Promise<{ result: AgentToolResult<unknown>; isError: boolean; errorDetails?: ToolResultMessage['error'] }> {
 
         if (!tool) {
@@ -285,7 +294,7 @@ export class DefaultAgentRunner implements AgentRunner {
 
         try {
             const validatedArgs = validateToolArguments(tool, toolCall);
-            const result = await tool.execute(toolCall.toolCallId, validatedArgs, signal, onUpdate);
+            const result = await tool.execute(toolCall.toolCallId, validatedArgs, signal, onUpdate, context);
             return { result, isError: false };
         } catch (e) {
             const message = e instanceof Error ? e.message : String(e);

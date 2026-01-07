@@ -1,6 +1,15 @@
 import { Api, BaseAssistantEvent, Content, Message, Model, OptionsForApi, Tool, ToolResultMessage, } from "../types.js";
 import type { Static, TSchema } from "@sinclair/typebox";
 
+/**
+ * Context provided to tools during execution.
+ * Allows tools to make decisions based on conversation history.
+ */
+export interface ToolExecutionContext {
+	/** Read-only conversation history (messages up to but not including current tool results) */
+	messages: readonly Message[];
+}
+
 
 export interface AgentToolResult<T> {
 	// Content blocks supporting text and images
@@ -34,6 +43,7 @@ export interface AgentTool<TParameters extends TSchema = TSchema, TDetails = any
 		params: Static<TParameters>,
 		signal?: AbortSignal,
 		onUpdate?: AgentToolUpdateCallback<TDetails>,
+		context?: ToolExecutionContext,
 	) => Promise<AgentToolResult<TDetails>>;
 }
 
