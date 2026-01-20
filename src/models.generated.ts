@@ -240,9 +240,9 @@ export const MODELS = {
 			reasoning: true,
 			input: ["text"],
 			cost: {
-				input: 0, // TODO: Fill in pricing
-				output: 0, // TODO: Fill in pricing
-				cacheRead: 0, // TODO: Fill in pricing
+				input: 0.6, // TODO: Fill in pricing
+				output: 2.2, // TODO: Fill in pricing
+				cacheRead: 0.11, // TODO: Fill in pricing
 				cacheWrite: 0,
 			},
 			contextWindow: 200000,
