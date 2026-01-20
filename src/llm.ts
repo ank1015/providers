@@ -9,12 +9,14 @@ import { AssistantMessageEventStream } from "./utils/event-stream.js";
 import { generateUUID } from "./utils/uuid.js";
 import { completeAnthropic, AnthropicProviderOptions, streamAnthropic } from "./providers/anthropic/index.js";
 import { getMockAnthropicMessage } from "./providers/anthropic/utils.js";
+import { completeZai, ZaiProviderOptions, streamZai, getMockZaiMessage } from "./providers/zai/index.js";
 
 const envMap: Record<Api, string> = {
     openai: "OPENAI_API_KEY",
     google: "GEMINI_API_KEY",
     deepseek: "DEEPSEEK_API_KEY",
-    anthropic: "ANTHROPIC_API_KEY"
+    anthropic: "ANTHROPIC_API_KEY",
+    zai: "ZAI_API_KEY"
 };
 
 
@@ -70,6 +72,13 @@ export async function complete<TApi extends Api>(
                 providerOptions as AnthropicProviderOptions,
                 messageId
             ) as Promise<BaseAssistantMessage<TApi>>
+        case 'zai':
+            return completeZai(
+                model as Model<'zai'>,
+                context,
+                providerOptions as ZaiProviderOptions,
+                messageId
+            ) as Promise<BaseAssistantMessage<TApi>>
         default: {
             const _exhaustive: never = model.api;
             throw new Error(`Unhandled API: ${_exhaustive}`);
@@ -123,6 +132,13 @@ export function stream<TApi extends Api>(
                 providerOptions as AnthropicProviderOptions,
                 messageId
             ) as unknown as AssistantMessageEventStream<TApi>;
+        case 'zai':
+            return streamZai(
+                model as Model<'zai'>,
+                context,
+                providerOptions as ZaiProviderOptions,
+                messageId
+            ) as unknown as AssistantMessageEventStream<TApi>;
         default: {
             const _exhaustive: never = model.api;
             throw new Error(`Unhandled API: ${_exhaustive}`);
@@ -141,6 +157,8 @@ export function getMockMessage(model: Model<Api>): BaseAssistantMessage<Api> {
         message = getMockDeepSeekMessage()
     } else if (model.api === 'anthropic'){
         message = getMockAnthropicMessage();
+    } else if (model.api === 'zai') {
+        message = getMockZaiMessage();
     }
     const baseMessage: BaseAssistantMessage<Api> = {
         role: 'assistant',
