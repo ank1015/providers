@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.37] - 2026-01-20
+
+### Added
+- **Z.AI Provider**: Full support for Z.AI (GLM) models
+  - Implemented `glm-4.7` model with 200K context window
+  - Complete support for `complete` and `stream` functionality
+  - Support for thinking/reasoning mode via `reasoning_content` field
+  - Support for preserved thinking across turns with `clear_thinking: false` parameter
+  - OpenAI-compatible chat completions API implementation
+  - Added comprehensive unit and integration tests
+
 ## [0.0.36] - 2026-01-07
 
 ### Added
