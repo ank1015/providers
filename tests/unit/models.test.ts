@@ -16,9 +16,9 @@ describe('models', () => {
 			expect(providers).toContain('google');
 		});
 
-		it('should return exactly 4 providers', () => {
+		it('should return exactly 5 providers', () => {
 			const providers = getProviders();
-			expect(providers.length).toBe(4);
+			expect(providers.length).toBe(5);
 		});
 
 		it('should return a new array each time (not a reference)', () => {
@@ -366,6 +366,7 @@ describe('models', () => {
 			delete process.env.GEMINI_API_KEY;
 			delete process.env.DEEPSEEK_API_KEY;
 			delete process.env.ANTHROPIC_API_KEY;
+			delete process.env.ZAI_API_KEY;
 
 			const models = getAvailableModels();
 			expect(models).toEqual([]);
@@ -376,6 +377,7 @@ describe('models', () => {
 			delete process.env.GEMINI_API_KEY;
 			delete process.env.DEEPSEEK_API_KEY;
 			delete process.env.ANTHROPIC_API_KEY;
+			delete process.env.ZAI_API_KEY;
 
 			const models = getAvailableModels();
 			expect(models.length).toBeGreaterThan(0);
@@ -386,6 +388,7 @@ describe('models', () => {
 		it('should return only google models when only GEMINI_API_KEY is set', () => {
 			delete process.env.OPENAI_API_KEY;
 			delete process.env.DEEPSEEK_API_KEY;
+			delete process.env.ZAI_API_KEY;
 			delete process.env.ANTHROPIC_API_KEY;
 			process.env.GEMINI_API_KEY = 'test-key';
 
@@ -428,7 +431,7 @@ describe('models', () => {
 			process.env.GEMINI_API_KEY = 'gemini-key';
 
 			const models = getAvailableModels();
-			expect(models.length).toBe(13); // 6 OpenAI + 3 Google + 1 deepseek + 3 claude
+			expect(models.length).toBe(11); // 6 OpenAI + 3 Google + 1 deepseek + 3 claude
 		});
 
 		it('should return models with valid properties', () => {
