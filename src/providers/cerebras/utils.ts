@@ -283,15 +283,24 @@ export function buildCerebrasMessages(_model: Model<'cerebras'>, context: Contex
 }
 
 export function convertTools(tools: readonly Tool[]): ChatCompletionTool[] {
-	return tools.map((tool) => ({
-		type: "function" as const,
-		function: {
-			name: tool.name,
-			description: tool.description,
-			parameters: tool.parameters as Record<string, unknown>,
-			strict: true // Cerebras supports strict mode for tool calling
-		}
-	}));
+	return tools.map((tool) => {
+		const params = tool.parameters as Record<string, unknown>;
+		// Add additionalProperties: false for Cerebras strict mode compatibility
+		const parameters = {
+			...params,
+			additionalProperties: false
+		};
+
+		return {
+			type: "function" as const,
+			function: {
+				name: tool.name,
+				description: tool.description,
+				parameters,
+				strict: true
+			}
+		};
+	});
 }
 
 export function mapStopReason(finishReason: string | null | undefined): StopReason {
