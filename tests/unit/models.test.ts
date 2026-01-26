@@ -18,7 +18,7 @@ describe('models', () => {
 
 		it('should return exactly 5 providers', () => {
 			const providers = getProviders();
-			expect(providers.length).toBe(5);
+			expect(providers.length).toBe(6);
 		});
 
 		it('should return a new array each time (not a reference)', () => {
@@ -179,7 +179,7 @@ describe('models', () => {
 		it('should return all openai models', () => {
 			const models = getModels('openai');
 			expect(Array.isArray(models)).toBe(true);
-			expect(models.length).toBe(6);
+			expect(models.length).toBe(7);
 			expect(models.every(m => m.api === 'openai')).toBe(true);
 		});
 
@@ -367,6 +367,7 @@ describe('models', () => {
 			delete process.env.DEEPSEEK_API_KEY;
 			delete process.env.ANTHROPIC_API_KEY;
 			delete process.env.ZAI_API_KEY;
+			delete process.env.CEREBRAS_API_KEY;
 
 			const models = getAvailableModels();
 			expect(models).toEqual([]);
@@ -378,6 +379,7 @@ describe('models', () => {
 			delete process.env.DEEPSEEK_API_KEY;
 			delete process.env.ANTHROPIC_API_KEY;
 			delete process.env.ZAI_API_KEY;
+			delete process.env.CEREBRAS_API_KEY;
 
 			const models = getAvailableModels();
 			expect(models.length).toBeGreaterThan(0);
@@ -390,6 +392,7 @@ describe('models', () => {
 			delete process.env.DEEPSEEK_API_KEY;
 			delete process.env.ZAI_API_KEY;
 			delete process.env.ANTHROPIC_API_KEY;
+			delete process.env.CEREBRAS_API_KEY;
 			process.env.GEMINI_API_KEY = 'test-key';
 
 			const models = getAvailableModels();
@@ -414,7 +417,7 @@ describe('models', () => {
 
 			const models = getAvailableModels();
 			const openaiModels = models.filter(m => m.api === 'openai');
-			expect(openaiModels.length).toBe(6);
+			expect(openaiModels.length).toBe(7);
 		});
 
 		it('should return 3 google models when GEMINI_API_KEY is set', () => {
@@ -426,12 +429,12 @@ describe('models', () => {
 			expect(googleModels.length).toBe(3);
 		});
 
-		it('should return 13 total models when both keys are set', () => {
+		it('should return 14 total models when both keys are set', () => {
 			process.env.OPENAI_API_KEY = 'openai-key';
 			process.env.GEMINI_API_KEY = 'gemini-key';
 
 			const models = getAvailableModels();
-			expect(models.length).toBe(11); // 6 OpenAI + 3 Google + 1 deepseek + 3 claude
+			expect(models.length).toBe(14); // 6 OpenAI + 3 Google + 1 deepseek + 3 claude
 		});
 
 		it('should return models with valid properties', () => {

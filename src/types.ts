@@ -8,9 +8,10 @@ import { GoogleProviderOptions } from "./providers/google/index.js";
 import { DeepSeekProviderOptions } from "./providers/deepseek/index.js";
 import { AnthropicProviderOptions } from "./providers/anthropic/types.js";
 import { ZaiProviderOptions } from "./providers/zai/index.js";
+import { CerebrasProviderOptions } from "./providers/cerebras/index.js";
 import { AssistantMessageEventStream } from "./utils/event-stream.js";
 
-export const KnownApis = ['openai', 'google', 'deepseek', 'anthropic', 'zai'] as const;                                                                                                         
+export const KnownApis = ['openai', 'google', 'deepseek', 'anthropic', 'zai', 'cerebras'] as const;                                                                                                         
 export type Api = typeof KnownApis[number]; 
 export interface Model<TApi extends Api> {
 	id: string;
@@ -125,6 +126,7 @@ export interface ApiNativeAssistantMessageMap {
     "deepseek": ChatCompletion;
     "anthropic": AnthropicMessage;
     "zai": ChatCompletion;
+    "cerebras": ChatCompletion;
 }
 
 export type NativeAssistantMessageForApi<TApi extends Api> = ApiNativeAssistantMessageMap[TApi]
@@ -197,6 +199,7 @@ export interface ApiOptionsMap {
 	'deepseek': DeepSeekProviderOptions
 	'anthropic': AnthropicProviderOptions
 	'zai': ZaiProviderOptions
+	'cerebras': CerebrasProviderOptions
 }
 
 export type OptionsForApi<TApi extends Api> = ApiOptionsMap[TApi]

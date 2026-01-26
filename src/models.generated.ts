@@ -19,6 +19,23 @@ export const MODELS = {
 			maxTokens: 128000,
 			tools: ['function_calling'],
 		} satisfies Model<"openai">,
+		"gpt-5.2-codex": {
+			id: "gpt-5.2-codex",
+			name: "GPT-5.2-Codex",
+			api: "openai",
+			baseUrl: "https://api.openai.com/v1",
+			reasoning: true,
+			input: ["text", "image", "file"],
+			cost: {
+				input: 1.75,
+				output: 14,
+				cacheRead: 0.175,
+				cacheWrite: 0,
+			},
+			contextWindow: 400000,
+			maxTokens: 128000,
+			tools: ['function_calling'],
+		} satisfies Model<"openai">,
 		"gpt-5.2-pro": {
 			id: "gpt-5.2-pro",
 			name: "GPT-5.2 Pro",
@@ -233,21 +250,57 @@ export const MODELS = {
 	},
 	zai: {
 		"glm-4.7": {
-			id: "glm-4.7",
+			id: "zai-org/GLM-4.7",
 			name: "GLM-4.7",
 			api: "zai",
-			baseUrl: "https://api.z.ai/api/paas/v4",
+			baseUrl: "https://api.deepinfra.com/v1/openai/",
 			reasoning: true,
 			input: ["text"],
 			cost: {
-				input: 0.6, // TODO: Fill in pricing
-				output: 2.2, // TODO: Fill in pricing
-				cacheRead: 0.11, // TODO: Fill in pricing
+				input: 0.43, // TODO: Fill in pricing
+				output: 1.75, // TODO: Fill in pricing
+				cacheRead: 0.08, // TODO: Fill in pricing
 				cacheWrite: 0,
 			},
 			contextWindow: 200000,
 			maxTokens: 131072,
 			tools: ['function_calling'],
 		} satisfies Model<"zai">,
+	},
+	cerebras: {
+		"gpt-oss-120b": {
+			id: "gpt-oss-120b",
+			name: "GPT OSS 120B",
+			api: "cerebras",
+			baseUrl: "https://api.cerebras.ai/v1",
+			reasoning: true,
+			input: ["text"],
+			cost: {
+				input: 0.35,
+				output: 0.75,
+				cacheRead: 0.35, // Same as input (no cache discount mentioned)
+				cacheWrite: 0,
+			},
+			contextWindow: 131000,
+			maxTokens: 40000,
+			tools: ['function_calling'],
+		} satisfies Model<"cerebras">,
+		"zai-glm-4.7": {
+			id: "zai-glm-4.7",
+			name: "Z.ai GLM 4.7",
+			api: "cerebras",
+			baseUrl: "https://api.cerebras.ai/v1",
+			reasoning: true,
+			input: ["text"],
+			cost: {
+				input: 2.25,
+				output: 2.75,
+				cacheRead: 2.25, // Same as input (no cache discount mentioned)
+				cacheWrite: 0,
+			},
+			contextWindow: 131000,
+			maxTokens: 40000,
+			tools: ['function_calling'],
+		} satisfies Model<"cerebras">,
 	}
 }
