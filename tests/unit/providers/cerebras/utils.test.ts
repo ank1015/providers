@@ -697,7 +697,10 @@ describe('Cerebras Utils', () => {
 				function: {
 					name: 'search',
 					description: 'Search the web',
-					parameters: tool.parameters,
+					parameters: {
+						...tool.parameters,
+						additionalProperties: false,
+					},
 					strict: true, // Cerebras supports strict mode
 				},
 			});
