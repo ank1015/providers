@@ -9,6 +9,8 @@ export * from './providers/openai/index.js';
 export * from './providers/google/index.js';
 export * from './providers/deepseek/index.js';
 export * from './providers/anthropic/index.js';
+export * from './providers/zai/index.js';
+export * from './providers/cerebras/index.js';
 
 export * from './agent/conversation.js';
 export * from './agent/utils.js';
