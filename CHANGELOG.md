@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.38] - 2026-01-26
+
+### Added
+- **Cerebras Provider**: Full support for Cerebras Inference models
+  - Implemented `gpt-oss-120b` (GPT OSS 120B) with 131K context window
+  - Implemented `zai-glm-4.7` (Z.ai GLM 4.7) with 131K context window
+  - Complete support for `complete` and `stream` functionality
+  - Support for reasoning via `reasoning_format` parameter (`parsed`, `raw`, `hidden`, `none`)
+  - Model-specific reasoning controls: `reasoning_effort` (GPT-OSS), `disable_reasoning` and `clear_thinking` (GLM)
+  - Prompt caching support via `prompt_tokens_details.cached_tokens`
+  - OpenAI-compatible chat completions API implementation
+  - Added comprehensive unit and integration tests
+
 ## [0.0.37] - 2026-01-20
 
 ### Added
