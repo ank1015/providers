@@ -11,6 +11,7 @@ import { completeAnthropic, AnthropicProviderOptions, streamAnthropic } from "./
 import { getMockAnthropicMessage } from "./providers/anthropic/utils.js";
 import { completeZai, ZaiProviderOptions, streamZai, getMockZaiMessage } from "./providers/zai/index.js";
 import { completeCerebras, CerebrasProviderOptions, streamCerebras, getMockCerebrasMessage } from "./providers/cerebras/index.js";
+import { completeKimi, KimiProviderOptions, streamKimi, getMockKimiMessage } from "./providers/kimi/index.js";
 
 const envMap: Record<Api, string> = {
     openai: "OPENAI_API_KEY",
@@ -18,7 +19,8 @@ const envMap: Record<Api, string> = {
     deepseek: "DEEPSEEK_API_KEY",
     anthropic: "ANTHROPIC_API_KEY",
     zai: "ZAI_API_KEY",
-    cerebras: "CEREBRAS_API_KEY"
+    cerebras: "CEREBRAS_API_KEY",
+    kimi: "KIMI_API_KEY"
 };
 
 
@@ -88,6 +90,13 @@ export async function complete<TApi extends Api>(
                 providerOptions as CerebrasProviderOptions,
                 messageId
             ) as Promise<BaseAssistantMessage<TApi>>
+        case 'kimi':
+            return completeKimi(
+                model as Model<'kimi'>,
+                context,
+                providerOptions as KimiProviderOptions,
+                messageId
+            ) as Promise<BaseAssistantMessage<TApi>>
         default: {
             const _exhaustive: never = model.api;
             throw new Error(`Unhandled API: ${_exhaustive}`);
@@ -155,6 +164,13 @@ export function stream<TApi extends Api>(
                 providerOptions as CerebrasProviderOptions,
                 messageId
             ) as unknown as AssistantMessageEventStream<TApi>;
+        case 'kimi':
+            return streamKimi(
+                model as Model<'kimi'>,
+                context,
+                providerOptions as KimiProviderOptions,
+                messageId
+            ) as unknown as AssistantMessageEventStream<TApi>;
         default: {
             const _exhaustive: never = model.api;
             throw new Error(`Unhandled API: ${_exhaustive}`);
@@ -177,6 +193,8 @@ export function getMockMessage(model: Model<Api>): BaseAssistantMessage<Api> {
         message = getMockZaiMessage();
     } else if (model.api === 'cerebras') {
         message = getMockCerebrasMessage();
+    } else if (model.api === 'kimi') {
+        message = getMockKimiMessage();
     }
     const baseMessage: BaseAssistantMessage<Api> = {
         role: 'assistant',
