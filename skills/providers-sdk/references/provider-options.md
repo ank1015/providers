@@ -8,6 +8,7 @@
 - [DeepSeek](#deepseek)
 - [Cerebras](#cerebras)
 - [Z.AI](#zai)
+- [Kimi](#kimi)
 
 ## Common Options
 
@@ -306,16 +307,80 @@ const response = await complete(model, context, {
 const thinking = response.content.find(c => c.type === 'thinking');
 ```
 
+## Kimi
+
+```typescript
+import { KimiProviderOptions } from '@ank1015/providers';
+
+const options: KimiProviderOptions = {
+  apiKey: process.env.KIMI_API_KEY,
+  signal: abortController.signal,
+
+  // Temperature (0-1, fixed at 1.0 for kimi-k2.5, 0.6 for non-thinking mode)
+  temperature: 0.6,
+
+  // Top-p sampling (fixed at 0.95 for kimi-k2.5)
+  top_p: 0.95,
+
+  // Max tokens (default 32768)
+  max_tokens: 32768,
+
+  // Thinking configuration (kimi-k2.5 only)
+  thinking: {
+    type: 'enabled' // 'enabled' | 'disabled'
+  }
+};
+```
+
+### Kimi Thinking
+
+Kimi K2.5 supports extended thinking mode:
+
+```typescript
+const model = getModel('kimi', 'kimi-k2.5');
+
+const response = await complete(model, context, {
+  thinking: {
+    type: 'enabled' // Default for reasoning models
+  }
+});
+
+// Access thinking (reasoning_content)
+const thinking = response.content.find(c => c.type === 'thinking');
+console.log('Reasoning:', thinking?.thinkingText);
+```
+
+### Disable Thinking
+
+```typescript
+const response = await complete(model, context, {
+  thinking: {
+    type: 'disabled'
+  }
+});
+```
+
+### Kimi K2 Turbo (Fast Model)
+
+```typescript
+const model = getModel('kimi', 'kimi-k2-turbo-preview');
+
+// Turbo model - faster, no thinking mode
+const response = await complete(model, context, {
+  temperature: 0.6
+});
+```
+
 ## Provider Comparison
 
-| Feature | Anthropic | OpenAI | Google | DeepSeek | Cerebras | Z.AI |
-|---------|-----------|--------|--------|----------|----------|------|
-| Extended Thinking | Yes | Yes (o1/o3) | Yes | Yes | Yes | Yes |
-| JSON Mode | Via prompt | Native | Native | Via prompt | Via prompt | Via prompt |
-| Vision | Yes | Yes | Yes | Limited | No | Yes |
-| File Input | Yes | Yes | Yes | No | No | No |
-| Caching | Yes | Yes | No | Yes | Yes | Yes |
-| Streaming | Yes | Yes | Yes | Yes | Yes | Yes |
+| Feature | Anthropic | OpenAI | Google | DeepSeek | Cerebras | Z.AI | Kimi |
+|---------|-----------|--------|--------|----------|----------|------|------|
+| Extended Thinking | Yes | Yes (o1/o3) | Yes | Yes | Yes | Yes | Yes |
+| JSON Mode | Via prompt | Native | Native | Via prompt | Via prompt | Via prompt | Via prompt |
+| Vision | Yes | Yes | Yes | Limited | No | Yes | Yes |
+| File Input | Yes | Yes | Yes | No | No | No | Yes |
+| Caching | Yes | Yes | No | Yes | Yes | Yes | Yes |
+| Streaming | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
 
 ## Environment Variables
 
@@ -327,6 +392,7 @@ GEMINI_API_KEY=AIza...
 DEEPSEEK_API_KEY=sk-...
 CEREBRAS_API_KEY=csk-...
 ZAI_API_KEY=xai-...
+KIMI_API_KEY=sk-...
 ```
 
 ## Switching Providers
@@ -358,6 +424,13 @@ const googleResponse = await complete(
   getModel('google', 'gemini-2.0-flash'),
   context,
   { apiKey: process.env.GEMINI_API_KEY }
+);
+
+// Kimi
+const kimiResponse = await complete(
+  getModel('kimi', 'kimi-k2.5'),
+  context,
+  { apiKey: process.env.KIMI_API_KEY }
 );
 ```
 

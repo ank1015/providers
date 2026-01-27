@@ -302,5 +302,41 @@ export const MODELS = {
 			maxTokens: 40000,
 			tools: ['function_calling'],
 		} satisfies Model<"cerebras">,
+	},
+	kimi: {
+		"kimi-k2.5": {
+			id: "kimi-k2.5",
+			name: "Kimi K2.5",
+			api: "kimi",
+			baseUrl: "https://api.moonshot.ai/v1",
+			reasoning: true,
+			input: ["text", "image"],
+			cost: {
+				input: 0.60,
+				output: 3.00,
+				cacheRead: 0.10,
+				cacheWrite: 0,
+			},
+			contextWindow: 262144,
+			maxTokens: 32768,
+			tools: ['function_calling'],
+		} satisfies Model<"kimi">,
+		"kimi-k2-turbo-preview": {
+			id: "kimi-k2-turbo-preview",
+			name: "Kimi K2 Turbo Preview",
+			api: "kimi",
+			baseUrl: "https://api.moonshot.ai/v1",
+			reasoning: false,
+			input: ["text"],
+			cost: {
+				input: 0.60,
+				output: 3.00,
+				cacheRead: 0.10,
+				cacheWrite: 0,
+			},
+			contextWindow: 262144,
+			maxTokens: 32768,
+			tools: ['function_calling'],
+		} satisfies Model<"kimi">,
 	}
 }

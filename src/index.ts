@@ -11,6 +11,7 @@ export * from './providers/deepseek/index.js';
 export * from './providers/anthropic/index.js';
 export * from './providers/zai/index.js';
 export * from './providers/cerebras/index.js';
+export * from './providers/kimi/index.js';
 
 export * from './agent/conversation.js';
 export * from './agent/utils.js';
