@@ -120,12 +120,33 @@ export function buildParams(model: Model<"kimi">, context: Context, options: Kim
 		stream: false
 	};
 
-	// Add thinking configuration if provided, default to enabled for reasoning models
+	// Determine thinking configuration
+	let thinkingEnabled = false;
 	if (thinking) {
 		params.thinking = thinking;
+		thinkingEnabled = thinking.type === "enabled";
 	} else if (model.reasoning) {
 		// Default to enabled for reasoning models
 		params.thinking = { type: "enabled" };
+		thinkingEnabled = true;
+	}
+
+	// Set temperature if not provided - Kimi has strict requirements:
+	// - kimi-k2.5 with thinking: must be 1.0
+	// - kimi-k2.5 without thinking: must be 0.6
+	// - other models: default 0.6
+	if (params.temperature === undefined) {
+		if (model.id === 'kimi-k2.5') {
+			params.temperature = thinkingEnabled ? 1.0 : 0.6;
+		} else {
+			params.temperature = 0.6;
+		}
+	}
+
+	// Set max_tokens if not provided - Kimi thinking models require >= 16000
+	// to ensure reasoning_content and content can be fully returned
+	if (params.max_tokens === undefined && thinkingEnabled) {
+		params.max_tokens = 16000;
 	}
 
 	// Add tools if available and supported

@@ -675,6 +675,68 @@ describe('Kimi Utils', () => {
 			expect(result.thinking).toBeUndefined();
 		});
 
+		it('should set temperature to 1.0 for kimi-k2.5 with thinking enabled', () => {
+			const context: Context = { messages: [] };
+			const options = { apiKey: 'test', signal: undefined };
+
+			const result = buildParams(mockModel, context, options);
+			expect(result.temperature).toBe(1.0);
+		});
+
+		it('should set temperature to 0.6 for kimi-k2.5 with thinking disabled', () => {
+			const context: Context = { messages: [] };
+			const options = {
+				apiKey: 'test',
+				signal: undefined,
+				thinking: { type: 'disabled' as const }
+			};
+
+			const result = buildParams(mockModel, context, options);
+			expect(result.temperature).toBe(0.6);
+		});
+
+		it('should set temperature to 0.6 for non-reasoning models', () => {
+			const nonReasoningModel: Model<'kimi'> = {
+				...mockModel,
+				id: 'kimi-k2-turbo-preview',
+				reasoning: false,
+			};
+			const context: Context = { messages: [] };
+			const options = { apiKey: 'test', signal: undefined };
+
+			const result = buildParams(nonReasoningModel, context, options);
+			expect(result.temperature).toBe(0.6);
+		});
+
+		it('should set max_tokens to 16000 for thinking-enabled models', () => {
+			const context: Context = { messages: [] };
+			const options = { apiKey: 'test', signal: undefined };
+
+			const result = buildParams(mockModel, context, options);
+			expect(result.max_tokens).toBe(16000);
+		});
+
+		it('should not set max_tokens for non-reasoning models', () => {
+			const nonReasoningModel: Model<'kimi'> = {
+				...mockModel,
+				id: 'kimi-k2-turbo-preview',
+				reasoning: false,
+			};
+			const context: Context = { messages: [] };
+			const options = { apiKey: 'test', signal: undefined };
+
+			const result = buildParams(nonReasoningModel, context, options);
+			expect(result.max_tokens).toBeUndefined();
+		});
+
+		it('should respect user-provided max_tokens', () => {
+			const context: Context = { messages: [] };
+			const options = { apiKey: 'test', signal: undefined, max_tokens: 8000 } as any;
+
+			const result = buildParams(mockModel, context, options);
+			expect(result.max_tokens).toBe(8000);
+		});
+
 		it('should convert tools when model supports function_calling', () => {
 			const tool: Tool = {
 				name: 'search',

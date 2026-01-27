@@ -59,7 +59,7 @@ export const streamKimi: StreamFunction<'kimi'> = (
 			const params = buildParams(model, context, options);
 
 			const kimiStream = await client.chat.completions.create(
-				{ ...params, stream: true },
+				{ ...params, stream: true, stream_options: { include_usage: true } },
 				{ signal: options?.signal }
 			);
 
@@ -234,8 +234,10 @@ export const streamKimi: StreamFunction<'kimi'> = (
 				}
 
 				// Handle usage (typically in the last chunk)
-				if (chunk.usage) {
-					const usage = chunk.usage as typeof chunk.usage & KimiUsage;
+				// Check both chunk.usage (OpenAI standard with stream_options) and choice.usage (Kimi-specific)
+				const usageData = chunk.usage || (choice as any).usage;
+				if (usageData) {
+					const usage = usageData as typeof chunk.usage & KimiUsage;
 					const cacheHitTokens = usage.cached_tokens || 0;
 
 					output.usage = {
