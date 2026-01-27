@@ -1,7 +1,7 @@
 ---
 name: providers-sdk
 description: |
-  Multi-provider LLM SDK for building agentic systems with unified interfaces across OpenAI, Anthropic, Google, DeepSeek, Cerebras, and Z.AI. Use this skill when:
+  Multi-provider LLM SDK for building agentic systems with unified interfaces across OpenAI, Anthropic, Google, DeepSeek, Cerebras, Z.AI, and Kimi. Use this skill when:
   (1) Making LLM API calls with complete() or stream() functions
   (2) Building agents with the Conversation class and tool execution
   (3) Working with multi-provider message formats (UserMessage, AssistantMessage, ToolResultMessage)
@@ -13,7 +13,7 @@ description: |
 
 # @ank1015/providers SDK
 
-Multi-provider LLM SDK supporting 6 providers with unified interfaces while preserving provider-specific capabilities.
+Multi-provider LLM SDK supporting 7 providers with unified interfaces while preserving provider-specific capabilities.
 
 ## Quick Reference
 
@@ -26,6 +26,7 @@ Multi-provider LLM SDK supporting 6 providers with unified interfaces while pres
 | DeepSeek | `'deepseek'` | `DEEPSEEK_API_KEY` |
 | Cerebras | `'cerebras'` | `CEREBRAS_API_KEY` |
 | Z.AI | `'zai'` | `ZAI_API_KEY` |
+| Kimi | `'kimi'` | `KIMI_API_KEY` |
 
 ## Core Usage Patterns
 
