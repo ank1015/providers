@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.39] - 2026-01-28
+
+### Added
+- **Kimi Provider**: Full support for Kimi (Moonshot AI) models
+  - Implemented `kimi-k2.5` with 256K context window and vision support
+  - Implemented `kimi-k2-turbo-preview` with 256K context window (fast model)
+  - Complete support for `complete` and `stream` functionality
+  - Support for thinking/reasoning mode via `reasoning_content` field
+  - Configurable thinking mode with `thinking: { type: 'enabled' | 'disabled' }`
+  - Vision (image) input support for kimi-k2.5
+  - Prompt caching support via `cached_tokens` field
+  - OpenAI-compatible chat completions API implementation
+  - Added comprehensive unit and integration tests
+
 ## [0.0.38] - 2026-01-26
 
 ### Added
